@@ -18,6 +18,7 @@ public:
     void MainLoop();
     bool IsRunning();
 private:
+    WGPUDevice device;
 };
 
 int main() {
@@ -47,6 +48,29 @@ bool Application::Initialize() {
     }
     std::cout << "-> Got WebGPU adapter: " << adapter << std::endl;
     inspectAdapter(adapter);
+
+    wgpuInstanceRelease(instance); // 不再需要了,释放WGPUInstance
+
+    std::cout << "Requesting device ..." << std::endl;
+    WGPUDeviceDescriptor deviceDesc = {};
+    deviceDesc.nextInChain = nullptr;
+    deviceDesc.label = "My WebGPU Device";
+    deviceDesc.requiredFeatureCount = 0;
+    deviceDesc.requiredLimits = nullptr;
+    deviceDesc.defaultQueue.nextInChain = nullptr;
+    deviceDesc.defaultQueue.label = "Default Queue";
+    deviceDesc.deviceLostCallback = [](WGPUDeviceLostReason reason, char const * message, void * ) {
+        std::cout << "WebGPU Device lost! Reason: " << reason << ", message: " << message << std::endl;
+    };
+    
+    device = requestDeviceSync(adapter, &deviceDesc);
+    if (device == nullptr) {
+        std::cout << "-> Failed to get WebGPU device." << std::endl;
+        return false;
+    }
+    std::cout << "-> Got WebGPU device: " << device << std::endl;
+    inspectDevice(device);
+
     return true;
 }
 void Application::Terminate() {
