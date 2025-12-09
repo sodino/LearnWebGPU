@@ -1,6 +1,9 @@
 #include "webgpu-utils.h"
 #include <webgpu/webgpu.h>
 
+#include <GLFW/glfw3.h>
+#include <glfw3webgpu.h>
+
 #include <iostream>
 #include <vector>
 #include <cassert>
@@ -18,7 +21,10 @@ public:
     void MainLoop();
     bool IsRunning();
 private:
-    WGPUDevice device;
+    GLFWwindow* window = nullptr;
+    WGPUSurface surface = nullptr;
+    WGPUDevice device = nullptr;
+    WGPUQueue queue = nullptr;
 };
 
 int main() {
@@ -36,11 +42,41 @@ Application::Application() {
 Application::~Application() {
 }
 bool Application::Initialize() {
+    // Init glfw Window
+    glfwInit();
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    window = glfwCreateWindow(800, 600, "Learn WebGPU", nullptr, nullptr);
+    if (window == nullptr) {
+        std::cout << "Failed to create GLFW window." << std::endl;
+        return false;
+    }
+
+
+
+
+
     WGPUInstance instance = wgpuCreateInstance(nullptr);
+    if (instance == nullptr) {
+        std::cout << "Failed to create WebGPU instance." << std::endl;
+        return false;
+    }
+
     std::cout << "-> Created WebGPU instance: " << instance << std::endl;
+
+    surface = glfwGetWGPUSurface(instance, window);
+    if (surface == nullptr) {
+        std::cout << "Failed to create WebGPU surface from GLFW window." << std::endl;
+        return false;
+    }
+    std::cout << "-> Created WebGPU surface: " << surface << std::endl;
+
+
+
 
     WGPURequestAdapterOptions adapterOpts = {};
     adapterOpts.nextInChain = nullptr;
+    adapterOpts.compatibleSurface = surface;    // 让适配器使用这个surface
     WGPUAdapter adapter = requestAdapterSync(instance, &adapterOpts);
     if (adapter == nullptr) {
         std::cout << "-> Failed to get WebGPU adapter." << std::endl;
@@ -75,8 +111,29 @@ bool Application::Initialize() {
         std::cout << "WebGPU Device Error! Type: " << type << ", message: " << message << std::endl;
     };
     wgpuDeviceSetUncapturedErrorCallback(device, onDeviceError, nullptr);
-    
 
+
+    queue = wgpuDeviceGetQueue(device);
+    std::cout << "-> Got WebGPU queue: " << queue << std::endl;
+
+    WGPUSurfaceConfiguration config = {};
+    config.nextInChain = nullptr;
+    config.device = device;
+    config.width = 640;
+    config.height = 480;
+    config.usage = WGPUTextureUsage_RenderAttachment;
+    WGPUTextureFormat surfaceFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
+    config.format = surfaceFormat;
+
+    config.viewFormatCount = 0;
+    config.viewFormats = nullptr;
+    config.presentMode = WGPUPresentMode_Fifo;
+    config.alphaMode = WGPUCompositeAlphaMode_Auto;
+    wgpuSurfaceConfigure(surface, &config);
+    std::cout << "-> Configured WebGPU surface." << std::endl;
+
+
+    wgpuAdapterRelease(adapter); // 不再需要了,释放WGPUAdapter
     return true;
 }
 void Application::Terminate() {
