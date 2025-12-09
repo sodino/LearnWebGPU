@@ -71,6 +71,12 @@ bool Application::Initialize() {
     std::cout << "-> Got WebGPU device: " << device << std::endl;
     inspectDevice(device);
 
+    auto onDeviceError = [](WGPUErrorType type, char const * message, void * ) {
+        std::cout << "WebGPU Device Error! Type: " << type << ", message: " << message << std::endl;
+    };
+    wgpuDeviceSetUncapturedErrorCallback(device, onDeviceError, nullptr);
+    
+
     return true;
 }
 void Application::Terminate() {
