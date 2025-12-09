@@ -33,7 +33,13 @@ int main() {
         std::cout << "Failed to initialize application." << std::endl;
         return 1;
     }
-    return 1;
+
+    while (app.IsRunning()) {
+        app.MainLoop();
+    }
+
+    app.Terminate();
+    return 0;
 }
 
 
@@ -159,5 +165,9 @@ void Application::Terminate() {
 void Application::MainLoop() {
 }
 bool Application::IsRunning() {
-    return false;
+    if (window == nullptr) {
+        return false;
+    }
+    bool b = glfwWindowShouldClose(window) == GLFW_FALSE;
+    return b;
 }
