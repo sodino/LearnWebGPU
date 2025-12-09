@@ -137,6 +137,24 @@ bool Application::Initialize() {
     return true;
 }
 void Application::Terminate() {
+    if (queue) {
+        wgpuQueueRelease(queue);
+        queue = nullptr;
+    }
+    if (device) {
+        wgpuDeviceRelease(device);
+        device = nullptr;
+    }
+    if (surface) {
+        wgpuSurfaceUnconfigure(surface);
+        wgpuSurfaceRelease(surface);
+        surface = nullptr;
+    }
+    if (window) {
+        glfwDestroyWindow(window);
+        window = nullptr;
+    }
+    glfwTerminate();
 }
 void Application::MainLoop() {
 }
