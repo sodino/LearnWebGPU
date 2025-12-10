@@ -77,6 +77,13 @@ WGPUTextureView Application::GetNextSurfaceTextureView() {
     return targetView;
 }
 
+// 初始化WebGPU和GLFW
+// 1. 初始化 glfw，输出 ： window (留存, IsRunning 判断)
+// 2. 实现化WGPUInstance : instance (销毁)
+// 3. window + instance 输出 WGPUSurface / surface (留存， 每次绘制时将渲染结果提交到屏幕显示)
+// 4. instance 请求出 WGPUAdapter / adapter (销毁)
+// 5. adapter 请求出 WGPUDevice / device (留存，创建CommandEncoder & 每次绘制时触发后端执行各种事件/回调)
+// 6. device 取出 WGPUQueue / queue (留存, 将渲染命令提交到GPU执行队列)
 bool Application::Initialize() {
     // Init glfw Window
     glfwInit();
