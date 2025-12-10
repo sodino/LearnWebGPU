@@ -29,7 +29,7 @@ WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions 
         options,
         onAdapterRequestEnded,
         (void*)&userData
-    );
+    );          // wgpuAdapterRelease
 
     assert(userData.requestEnded);
     return userData.adapter;
@@ -103,7 +103,7 @@ WGPUDevice requestDeviceSync(WGPUAdapter adapter, WGPUDeviceDescriptor const * d
         descriptor,
         onDeviceRequestEnded,
         (void*)&userData
-    );
+    );          // wgpuDeviceRelease
 
     assert(userData.requestEnded);
     return userData.device;

@@ -92,7 +92,7 @@ bool Application::Initialize() {
 
 
 
-    WGPUInstance instance = wgpuCreateInstance(nullptr);
+    WGPUInstance instance = wgpuCreateInstance(nullptr);    // wgpuInstanceRelease
     if (instance == nullptr) {
         std::cout << "Failed to create WebGPU instance." << std::endl;
         return false;
@@ -100,7 +100,7 @@ bool Application::Initialize() {
 
     std::cout << "-> Created WebGPU instance: " << instance << std::endl;
 
-    surface = glfwGetWGPUSurface(instance, window);
+    surface = glfwGetWGPUSurface(instance, window);         // wgpuSurfaceRelease
     if (surface == nullptr) {
         std::cout << "Failed to create WebGPU surface from GLFW window." << std::endl;
         return false;
@@ -113,7 +113,7 @@ bool Application::Initialize() {
     WGPURequestAdapterOptions adapterOpts = {};
     adapterOpts.nextInChain = nullptr;
     adapterOpts.compatibleSurface = surface;    // 让适配器使用这个surface
-    WGPUAdapter adapter = requestAdapterSync(instance, &adapterOpts);
+    WGPUAdapter adapter = requestAdapterSync(instance, &adapterOpts);   // wgpuAdapterRelease
     if (adapter == nullptr) {
         std::cout << "-> Failed to get WebGPU adapter." << std::endl;
         return false;
@@ -135,7 +135,7 @@ bool Application::Initialize() {
         std::cout << "WebGPU Device lost! Reason: " << reason << ", message: " << message << std::endl;
     };
     
-    device = requestDeviceSync(adapter, &deviceDesc);
+    device = requestDeviceSync(adapter, &deviceDesc);       // wgpuDeviceRelease
     if (device == nullptr) {
         std::cout << "-> Failed to get WebGPU device." << std::endl;
         return false;
@@ -149,7 +149,7 @@ bool Application::Initialize() {
     wgpuDeviceSetUncapturedErrorCallback(device, onDeviceError, nullptr);
 
 
-    queue = wgpuDeviceGetQueue(device);
+    queue = wgpuDeviceGetQueue(device);     // wgpuQueueRelease
     std::cout << "-> Got WebGPU queue: " << queue << std::endl;
 
     WGPUSurfaceConfiguration config = {};
@@ -165,7 +165,7 @@ bool Application::Initialize() {
     config.viewFormats = nullptr;
     config.presentMode = WGPUPresentMode_Fifo;
     config.alphaMode = WGPUCompositeAlphaMode_Auto;
-    wgpuSurfaceConfigure(surface, &config);
+    wgpuSurfaceConfigure(surface, &config);         // wgpuSurfaceUnconfigure
     std::cout << "-> Configured WebGPU surface." << std::endl;
 
 
@@ -207,7 +207,7 @@ void Application::MainLoop() {
 	WGPUCommandEncoderDescriptor encoderDesc = {};
 	encoderDesc.nextInChain = nullptr;
 	encoderDesc.label = "My command encoder";
-	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(device, &encoderDesc);
+	WGPUCommandEncoder cmdEncoder = wgpuDeviceCreateCommandEncoder(device, &encoderDesc);   // wgpuCommandEncoderRelease
 
 	// Create the render pass that clears the screen with our color
 	WGPURenderPassDescriptor renderPassDesc = {};
@@ -230,7 +230,7 @@ void Application::MainLoop() {
 	renderPassDesc.timestampWrites = nullptr;
 
 	// Create the render pass and end it immediately (we only clear the screen but do not draw anything)
-	WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(encoder, &renderPassDesc);
+	WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(cmdEncoder, &renderPassDesc);  // wgpuRenderPassEncoderRelease
 	wgpuRenderPassEncoderEnd(renderPass);
 	wgpuRenderPassEncoderRelease(renderPass);
 
@@ -238,8 +238,8 @@ void Application::MainLoop() {
 	WGPUCommandBufferDescriptor cmdBufferDescriptor = {};
 	cmdBufferDescriptor.nextInChain = nullptr;
 	cmdBufferDescriptor.label = "Command buffer";
-	WGPUCommandBuffer command = wgpuCommandEncoderFinish(encoder, &cmdBufferDescriptor);
-	wgpuCommandEncoderRelease(encoder);
+	WGPUCommandBuffer command = wgpuCommandEncoderFinish(cmdEncoder, &cmdBufferDescriptor); // wgpuCommandBufferRelease
+	wgpuCommandEncoderRelease(cmdEncoder);
 
 	std::cout << "Submitting command..." << std::endl;
 	wgpuQueueSubmit(queue, 1, &command);
