@@ -62,17 +62,17 @@ WGPUTextureView Application::GetNextSurfaceTextureView() {
     }
 
 
-    WGPUTextureViewDescriptor viewDesc = {};
-    viewDesc.nextInChain = nullptr;
-    viewDesc.label = "Surface texture view";
-    viewDesc.format = wgpuTextureGetFormat(surfaceTexture.texture);
-    viewDesc.dimension = WGPUTextureViewDimension_2D;
-    viewDesc.baseMipLevel = 0;
-    viewDesc.mipLevelCount = 1;
-    viewDesc.baseArrayLayer = 0;
-    viewDesc.arrayLayerCount = 1;
-    viewDesc.aspect = WGPUTextureAspect_All;
-    WGPUTextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &viewDesc);
+    WGPUTextureViewDescriptor tvDesc = {};
+    tvDesc.nextInChain = nullptr;
+    tvDesc.label = "Surface texture view";
+    tvDesc.format = wgpuTextureGetFormat(surfaceTexture.texture);
+    tvDesc.dimension = WGPUTextureViewDimension_2D;
+    tvDesc.baseMipLevel = 0;
+    tvDesc.mipLevelCount = 1;
+    tvDesc.baseArrayLayer = 0;
+    tvDesc.arrayLayerCount = 1;
+    tvDesc.aspect = WGPUTextureAspect_All;
+    WGPUTextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &tvDesc);
     // wgpuTextureRelease(surfaceTexture.texture); // 释放纹理对象引用, 但wgpu-native不能手动释放，所以注释掉
     return targetView;
 }
@@ -159,20 +159,20 @@ bool Application::Initialize() {
     queue = wgpuDeviceGetQueue(device);     // wgpuQueueRelease
     std::cout << "-> Got WebGPU queue: " << queue << std::endl;
 
-    WGPUSurfaceConfiguration config = {};
-    config.nextInChain = nullptr;
-    config.device = device;
-    config.width = 800;
-    config.height = 600;
-    config.usage = WGPUTextureUsage_RenderAttachment;
-    WGPUTextureFormat surfaceFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
-    config.format = surfaceFormat;
+    WGPUSurfaceConfiguration cfgSurface = {};
+    cfgSurface.nextInChain = nullptr;
+    cfgSurface.device = device;
+    cfgSurface.width = 800;
+    cfgSurface.height = 600;
+    cfgSurface.usage = WGPUTextureUsage_RenderAttachment;
+    WGPUTextureFormat textureFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
+    cfgSurface.format = textureFormat;
 
-    config.viewFormatCount = 0;
-    config.viewFormats = nullptr;
-    config.presentMode = WGPUPresentMode_Fifo;
-    config.alphaMode = WGPUCompositeAlphaMode_Auto;
-    wgpuSurfaceConfigure(surface, &config);         // wgpuSurfaceUnconfigure
+    cfgSurface.viewFormatCount = 0;
+    cfgSurface.viewFormats = nullptr;
+    cfgSurface.presentMode = WGPUPresentMode_Fifo;
+    cfgSurface.alphaMode = WGPUCompositeAlphaMode_Auto;
+    wgpuSurfaceConfigure(surface, &cfgSurface);         // wgpuSurfaceUnconfigure
     std::cout << "-> Configured WebGPU surface." << std::endl;
 
 
@@ -221,18 +221,18 @@ void Application::MainLoop() {
 	renderPassDesc.nextInChain = nullptr;
 
 	// The attachment part of the render pass descriptor describes the target texture of the pass
-	WGPURenderPassColorAttachment renderPassColorAttachment = {};
-	renderPassColorAttachment.view = targetView;
-	renderPassColorAttachment.resolveTarget = nullptr;
-	renderPassColorAttachment.loadOp = WGPULoadOp_Clear;
-	renderPassColorAttachment.storeOp = WGPUStoreOp_Store;
-	renderPassColorAttachment.clearValue = WGPUColor{ 1.0, 0.0, 1.0, 1.0 };
+	WGPURenderPassColorAttachment colorAttachment = {};
+	colorAttachment.view = targetView;
+	colorAttachment.resolveTarget = nullptr;
+	colorAttachment.loadOp = WGPULoadOp_Clear;
+	colorAttachment.storeOp = WGPUStoreOp_Store;
+	colorAttachment.clearValue = WGPUColor{ 1.0, 0.0, 1.0, 1.0 };
 #ifndef WEBGPU_BACKEND_WGPU
 	renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 #endif // NOT WEBGPU_BACKEND_WGPU
 
 	renderPassDesc.colorAttachmentCount = 1;
-	renderPassDesc.colorAttachments = &renderPassColorAttachment;
+	renderPassDesc.colorAttachments = &colorAttachment;
 	renderPassDesc.depthStencilAttachment = nullptr;
 	renderPassDesc.timestampWrites = nullptr;
 
@@ -245,12 +245,12 @@ void Application::MainLoop() {
 	WGPUCommandBufferDescriptor cmdBufferDescriptor = {};
 	cmdBufferDescriptor.nextInChain = nullptr;
 	cmdBufferDescriptor.label = "Command buffer";
-	WGPUCommandBuffer command = wgpuCommandEncoderFinish(cmdEncoder, &cmdBufferDescriptor); // wgpuCommandBufferRelease
+	WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(cmdEncoder, &cmdBufferDescriptor); // wgpuCommandBufferRelease
 	wgpuCommandEncoderRelease(cmdEncoder);
 
 	std::cout << "Submitting command..." << std::endl;
-	wgpuQueueSubmit(queue, 1, &command);
-	wgpuCommandBufferRelease(command);
+	wgpuQueueSubmit(queue, 1, &cmdBuffer);
+	wgpuCommandBufferRelease(cmdBuffer);
 	std::cout << "Command submitted." << std::endl;
 
 	// At the end of the frame
