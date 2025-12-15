@@ -19,18 +19,21 @@ void inspectAdapter(wgpu::Adapter adapter) {
     }
 
 
-    std::vector<WGPUFeatureName> features;
-    // 先取:特性数量
-    size_t featureCount = wgpuAdapterEnumerateFeatures(adapter, nullptr);
-    features.resize(featureCount);
-    // 再取:特性列表
-    wgpuAdapterEnumerateFeatures(adapter, features.data());
-    std::cout << "Adapter features:" << std::endl;
+    size_t featureCount = adapter.enumerateFeatures(nullptr);
+    std::vector<wgpu::FeatureName> features;
+    // 使用 vector 的构造函数分配相同大小的元素
+    for (size_t i = 0; i < featureCount; ++i) {
+        features.push_back(wgpu::FeatureName(wgpu::FeatureName::Undefined));
+    }
+    adapter.enumerateFeatures(features.data());
+    std::cout << "Device features(" << featureCount << ") (C++ wrapper):" << std::endl;
     std::cout << std::hex;
-    for (WGPUFeatureName f : features) {
-        std::cout << " - 0x" << f << std::endl;
+    for (wgpu::FeatureName f : features) {
+        std::cout << " - 0x" << static_cast<WGPUFeatureName>(f) << std::endl;
     }
     std::cout << std::dec;
+
+
 
 
     wgpu::AdapterProperties properties = {};
@@ -52,14 +55,17 @@ void inspectAdapter(wgpu::Adapter adapter) {
 
 
 void inspectDevice(wgpu::Device device) {
-    std::vector<WGPUFeatureName> features;
-    size_t featureCount = wgpuDeviceEnumerateFeatures(device, nullptr);
-    features.resize(featureCount);
-    wgpuDeviceEnumerateFeatures(device, features.data());
-    std::cout << "Device features:" << std::endl;
+    size_t featureCount = device.enumerateFeatures(nullptr);
+    std::vector<wgpu::FeatureName> features;
+    // 使用 vector 的构造函数分配相同大小的元素
+    for (size_t i = 0; i < featureCount; ++i) {
+        features.push_back(wgpu::FeatureName(wgpu::FeatureName::Undefined));
+    }
+    device.enumerateFeatures(features.data());
+    std::cout << "Device features(" << featureCount << ") (C++ wrapper):" << std::endl;
     std::cout << std::hex;
-    for (WGPUFeatureName f : features) {
-        std::cout << " - 0x" << f << std::endl;
+    for (wgpu::FeatureName f : features) {
+        std::cout << " - 0x" << static_cast<WGPUFeatureName>(f) << std::endl;
     }
     std::cout << std::dec;
 
