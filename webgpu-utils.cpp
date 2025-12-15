@@ -4,41 +4,11 @@
 #include <vector>
 #include <cassert>
 
-WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions const * options) {
-    struct UserData {
-        WGPUAdapter adapter = nullptr;
-        bool requestEnded = false;
-    };
 
-    UserData userData;
-
-
-    auto onAdapterRequestEnded = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, char const * message, void * pUserData) {
-        UserData& userData = *reinterpret_cast<UserData*>(pUserData);
-        if (status == WGPURequestAdapterStatus_Success) {
-            userData.adapter = adapter;
-        } else {
-            std::cout << "Could not get WebGPU adapter: " << message <<std::endl;
-        }
-
-        userData.requestEnded = true;
-    };
-
-    wgpuInstanceRequestAdapter(
-        instance,
-        options,
-        onAdapterRequestEnded,
-        (void*)&userData
-    );          // wgpuAdapterRelease
-
-    assert(userData.requestEnded);
-    return userData.adapter;
-}
-
-void inspectAdapter(WGPUAdapter adapter) {
-    WGPUSupportedLimits supportedLimits = {};
+void inspectAdapter(wgpu::Adapter adapter) {
+    wgpu::SupportedLimits supportedLimits = {};
     supportedLimits.nextInChain = nullptr;
-    bool success = wgpuAdapterGetLimits(adapter, &supportedLimits);
+    bool success = adapter.getLimits(&supportedLimits);
     if (success) {
         std::cout << "Adapter limits:" << std::endl;
         std::cout << "  maxTextureDimension1D: " << supportedLimits.limits.maxTextureDimension1D << std::endl;
@@ -62,8 +32,9 @@ void inspectAdapter(WGPUAdapter adapter) {
     }
     std::cout << std::dec;
 
-    WGPUAdapterProperties properties = {};
-    wgpuAdapterGetProperties(adapter, &properties);
+
+    wgpu::AdapterProperties properties = {};
+    adapter.getProperties(&properties);
     std::cout << "Adapter properties:" << std::endl;
     std::cout << "  vendorID: " << properties.vendorID << std::endl;
     std::cout << "  vendorName: " << (properties.vendorName ? properties.vendorName : "N/A") << std::endl;
@@ -79,38 +50,8 @@ void inspectAdapter(WGPUAdapter adapter) {
 }
 
 
-WGPUDevice requestDeviceSync(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor) {
-    struct UserData {
-        WGPUDevice device = nullptr;
-        bool requestEnded = false;
-    };
 
-    UserData userData;
-
-    auto onDeviceRequestEnded = [](WGPURequestDeviceStatus status, WGPUDevice device, char const * message, void * pUserData) {
-        UserData& userData = *reinterpret_cast<UserData*>(pUserData);
-        if (status == WGPURequestDeviceStatus_Success) {
-            userData.device = device;
-        } else {
-            std::cout << "Could not get WebGPU device: " << message <<std::endl;
-        }
-
-        userData.requestEnded = true;
-    };
-
-    wgpuAdapterRequestDevice(
-        adapter,
-        descriptor,
-        onDeviceRequestEnded,
-        (void*)&userData
-    );          // wgpuDeviceRelease
-
-    assert(userData.requestEnded);
-    return userData.device;
-}
-
-
-void inspectDevice(WGPUDevice device) {
+void inspectDevice(wgpu::Device device) {
     std::vector<WGPUFeatureName> features;
     size_t featureCount = wgpuDeviceEnumerateFeatures(device, nullptr);
     features.resize(featureCount);
@@ -122,9 +63,9 @@ void inspectDevice(WGPUDevice device) {
     }
     std::cout << std::dec;
 
-    WGPUSupportedLimits limits = {};
+    wgpu::SupportedLimits limits = {};
     limits.nextInChain = nullptr;
-    bool success = wgpuDeviceGetLimits(device, &limits);
+    bool success = device.getLimits(&limits);
     if (success) {
 		std::cout << "Device limits:" << std::endl;
 		std::cout << " - maxTextureDimension1D: " << limits.limits.maxTextureDimension1D << std::endl;
