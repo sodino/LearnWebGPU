@@ -26,12 +26,14 @@ public:
     bool IsRunning();
 private:
     wgpu::TextureView GetNextSurfaceTextureView();
-
+    void InitializePipeline();
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
     wgpu::Device device = nullptr;
     wgpu::Queue queue = nullptr;
+
+    std::unique_ptr<wgpu::ErrorCallback> uncapturedErrorCallback;
 };
 
 int main() {
@@ -52,6 +54,9 @@ int main() {
 
 Application::Application() { }
 Application::~Application() { }
+void Application::InitializePipeline() {
+
+}
 
 wgpu::TextureView Application::GetNextSurfaceTextureView() {
     wgpu::SurfaceTexture surfaceTexture;
@@ -158,7 +163,7 @@ bool Application::Initialize() {
         std::cout << "WebGPU Device Error! Type: " << type << ", message: " << message << std::endl;
     };
     // wgpuDeviceSetUncapturedErrorCallback(device, onDeviceError, nullptr);
-    auto errorCallbackHandle = device.setUncapturedErrorCallback(onDeviceError);
+    uncapturedErrorCallback = device.setUncapturedErrorCallback(onDeviceError);
 
 
     // queue = wgpuDeviceGetQueue(device);     // wgpuQueueRelease
