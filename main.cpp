@@ -13,6 +13,29 @@
 #include <cassert>
 
 
+
+
+const char* shaderSource = R"(
+@vertex
+fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
+    var p = vec2f(0.0, 0.0);
+    if (in_vertex_index == 0u) {
+        p = vec2f(-0.5, -0.5);
+    } else if (in_vertex_index == 1u) {
+        p = vec2f(0.5, -0.5);
+    } else {
+        p = vec2f(0.0, 0.5);
+    }
+    return vec4f(p, 0.0, 1.0);
+}
+
+@fragment
+fn fs_main() -> @location(0) vec4f {
+    return vec4f(1.0, 0.0, 0.0, 1.0);
+}
+)";
+
+
 class Application {
 public:
     Application();
@@ -34,6 +57,9 @@ private:
     wgpu::Queue queue = nullptr;
 
     std::unique_ptr<wgpu::ErrorCallback> uncapturedErrorCallback;
+
+    wgpu::TextureFormat surfaceFormat = wgpu::TextureFormat::Undefined;
+    wgpu::RenderPipeline pipeline;
 };
 
 int main() {
@@ -55,7 +81,70 @@ int main() {
 Application::Application() { }
 Application::~Application() { }
 void Application::InitializePipeline() {
+    wgpu::ShaderModuleDescriptor shaderDesc;
+    #ifdef WEBGPU_BACKEND_WGPU
+        shaderDesc.hintCount = 0;
+        shaderDesc.hints = nullptr;
+    #endif
 
+    wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
+    shaderCodeDesc.chain.next = nullptr;
+    shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
+    shaderCodeDesc.code = shaderSource;
+
+    shaderDesc.nextInChain = &shaderCodeDesc.chain;
+
+    wgpu::ShaderModule shaderModule = device.createShaderModule(shaderDesc);
+
+    wgpu::RenderPipelineDescriptor pipelineDesc;
+    pipelineDesc.vertex.bufferCount = 0;
+    pipelineDesc.vertex.buffers = nullptr;
+
+    pipelineDesc.vertex.module = shaderModule;
+    pipelineDesc.vertex.entryPoint = "vs_main";
+    pipelineDesc.vertex.constantCount = 0;
+    pipelineDesc.vertex.constants = nullptr;
+
+    pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+    pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
+
+    pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
+    pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
+
+
+
+    wgpu::FragmentState fragmentState;
+    fragmentState.module = shaderModule;
+    fragmentState.entryPoint = "fs_main";
+    fragmentState.constantCount = 0;
+    fragmentState.constants = nullptr;
+
+    wgpu::BlendState blendState;
+    blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
+    blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
+    blendState.color.operation = wgpu::BlendOperation::Add;
+    blendState.alpha.srcFactor = wgpu::BlendFactor::Zero;
+    blendState.alpha.dstFactor = wgpu::BlendFactor::One;
+    blendState.alpha.operation = wgpu::BlendOperation::Add;
+
+
+    wgpu::ColorTargetState colorState;
+    colorState.format = surfaceFormat;
+    colorState.blend = &blendState;
+    colorState.writeMask = wgpu::ColorWriteMask::All;
+
+
+    fragmentState.targetCount = 1;
+    fragmentState.targets = &colorState;
+    pipelineDesc.fragment = &fragmentState;
+
+    pipelineDesc.depthStencil = nullptr;
+    pipelineDesc.multisample.count = 1;
+    pipelineDesc.multisample.alphaToCoverageEnabled = false;
+    pipelineDesc.layout = nullptr;
+    pipeline = device.createRenderPipeline(pipelineDesc);
+
+    shaderModule.release();
 }
 
 wgpu::TextureView Application::GetNextSurfaceTextureView() {
@@ -178,8 +267,8 @@ bool Application::Initialize() {
     // cfgSurface.usage = WGPUTextureUsage_RenderAttachment;
     cfgSurface.usage = wgpu::TextureUsage::RenderAttachment;
     // WGPUTextureFormat textureFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
-    wgpu::TextureFormat textureFormat = surface.getPreferredFormat(adapter);
-    cfgSurface.format = textureFormat;
+    surfaceFormat = surface.getPreferredFormat(adapter);// Store the chosen surface format so pipeline creation can use it
+    cfgSurface.format = surfaceFormat;
 
     cfgSurface.viewFormatCount = 0;
     cfgSurface.viewFormats = nullptr;
@@ -192,9 +281,16 @@ bool Application::Initialize() {
 
     // wgpuAdapterRelease(adapter); // 不再需要了,释放WGPUAdapter
     adapter.release(); // 不再需要了,释放WGPUAdapter
+
+
+    InitializePipeline();
     return true;
 }
 void Application::Terminate() {
+    if (pipeline == nullptr) {
+        pipeline.release();
+        pipeline = nullptr;
+    }
     if (queue) {
         // wgpuQueueRelease(queue);
         queue.release();
@@ -266,6 +362,10 @@ void Application::MainLoop() {
 	// wgpuRenderPassEncoderRelease(renderPass);
 
 	wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);  // wgpuRenderPassEncoderRelease
+
+    renderPass.setPipeline(pipeline);
+    renderPass.draw(3, 1, 0, 0);
+
 	renderPass.end();
 	renderPass.release();
 
