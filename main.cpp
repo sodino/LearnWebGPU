@@ -49,7 +49,7 @@ public:
     bool IsRunning();
 private:
     wgpu::TextureView GetNextSurfaceTextureView();
-    void InitializePipeline();
+    void InitializePipeline(wgpu::TextureFormat format);
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -58,7 +58,6 @@ private:
 
     std::unique_ptr<wgpu::ErrorCallback> uncapturedErrorCallback;
 
-    wgpu::TextureFormat surfaceFormat = wgpu::TextureFormat::Undefined;
     wgpu::RenderPipeline pipeline;
 };
 
@@ -80,7 +79,7 @@ int main() {
 
 Application::Application() { }
 Application::~Application() { }
-void Application::InitializePipeline() {
+void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::ShaderModuleDescriptor shaderDesc;
     #ifdef WEBGPU_BACKEND_WGPU
         shaderDesc.hintCount = 0;
@@ -129,7 +128,7 @@ void Application::InitializePipeline() {
 
 
     wgpu::ColorTargetState colorState;
-    colorState.format = surfaceFormat;
+    colorState.format = format;
     colorState.blend = &blendState;
     colorState.writeMask = wgpu::ColorWriteMask::All;
 
@@ -267,8 +266,8 @@ bool Application::Initialize() {
     // cfgSurface.usage = WGPUTextureUsage_RenderAttachment;
     cfgSurface.usage = wgpu::TextureUsage::RenderAttachment;
     // WGPUTextureFormat textureFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
-    surfaceFormat = surface.getPreferredFormat(adapter);// Store the chosen surface format so pipeline creation can use it
-    cfgSurface.format = surfaceFormat;
+    wgpu::TextureFormat textureFormat = surface.getPreferredFormat(adapter);// Store the chosen surface format so pipeline creation can use it
+    cfgSurface.format = textureFormat;
 
     cfgSurface.viewFormatCount = 0;
     cfgSurface.viewFormats = nullptr;
@@ -283,7 +282,7 @@ bool Application::Initialize() {
     adapter.release(); // 不再需要了,释放WGPUAdapter
 
 
-    InitializePipeline();
+    InitializePipeline(textureFormat);
     return true;
 }
 void Application::Terminate() {
