@@ -50,6 +50,9 @@ public:
 private:
     wgpu::TextureView GetNextSurfaceTextureView();
     void InitializePipeline(wgpu::TextureFormat format);
+
+    // 实现：创建 、 写入 、 复制 、 读取/映射 、 释放这些操作。
+    void PlayingWithBuffers();
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -283,8 +286,76 @@ bool Application::Initialize() {
 
 
     InitializePipeline(textureFormat);
+
+
+    PlayingWithBuffers();
     return true;
 }
+
+void Application::PlayingWithBuffers() {
+    const int LENGTH = 16;
+    // 预备cpu数据，准备写入到gpu
+    std::vector<uint8_t> numbers(LENGTH);
+    for (uint8_t i = 0; i < LENGTH; i ++) {
+        numbers[i] = i;
+    }
+
+
+    wgpu::BufferDescriptor bufferDesc;
+    bufferDesc.label = "Some GPU-side data buffer";
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::CopySrc;
+    bufferDesc.size = LENGTH;
+    bufferDesc.mappedAtCreation = false;
+    // 1. 创建
+    wgpu::Buffer buffer1 = device.createBuffer(bufferDesc);
+
+    bufferDesc.label = "Output buffer";
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
+    wgpu::Buffer buffer2 = device.createBuffer(bufferDesc);
+    // 2. 写入
+    queue.writeBuffer(buffer1, 0, numbers.data(), numbers.size());
+
+    // 3. 复制
+    wgpu::CommandEncoder encoder = device.createCommandEncoder(wgpu::Default);
+    encoder.copyBufferToBuffer(buffer1, 0, buffer2, 0, LENGTH);
+    wgpu::CommandBuffer command = encoder.finish(wgpu::Default);
+    encoder.release();
+    queue.submit(1, &command);
+    command.release();
+
+
+    // 映射与读取
+    struct Context{
+        bool ready;
+        wgpu::Buffer buffer;
+    };
+
+    auto onBuffer2Mapped = [](WGPUBufferMapAsyncStatus status, void* pUserData) {
+        Context* ctx = reinterpret_cast<Context*>(pUserData);
+        ctx->ready = true;
+        if (status != WGPUBufferMapAsyncStatus_Success) return;
+
+        uint8_t* bufferData = (uint8_t*)ctx->buffer.getConstMappedRange(0, LENGTH);
+        std::cout << "bufferData = [";
+        for (int i = 0;i < LENGTH; i ++) {
+            std:: cout << (int)bufferData[i] << " ";
+        }
+        std::cout << "]" << std::endl;
+
+        ctx->buffer.unmap();
+    };
+
+    Context ctx = { false, buffer2 };
+    wgpuBufferMapAsync(buffer2, wgpu::MapMode::Read, 0, LENGTH, onBuffer2Mapped, (void*)&ctx);
+    while(!ctx.ready) {
+        device.poll(true);
+    }
+
+    // 回收
+    buffer1.release();
+    buffer2.release();
+}
+
 void Application::Terminate() {
     if (pipeline == nullptr) {
         pipeline.release();
@@ -396,7 +467,7 @@ void Application::MainLoop() {
 	// wgpuDeviceTick(device);
     device.tick();
 #elif defined(WEBGPU_BACKEND_WGPU)
-	wgpuDevicePoll(device, false, nullptr);
+	// wgpuDevicePoll(device, false, nullptr);
 	device.poll(false);
 #endif
 }
