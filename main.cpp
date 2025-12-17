@@ -324,32 +324,34 @@ void Application::PlayingWithBuffers() {
     command.release();
 
 
-    // 映射与读取
-    struct Context{
-        bool ready;
-        wgpu::Buffer buffer;
-    };
+    // 映射与读取（C++ 风格）
+    bool ready = false;
 
-    auto onBuffer2Mapped = [](WGPUBufferMapAsyncStatus status, void* pUserData) {
-        Context* ctx = reinterpret_cast<Context*>(pUserData);
-        ctx->ready = true;
-        if (status != WGPUBufferMapAsyncStatus_Success) return;
-
-        uint8_t* bufferData = (uint8_t*)ctx->buffer.getConstMappedRange(0, LENGTH);
-        std::cout << "bufferData = [";
-        for (int i = 0;i < LENGTH; i ++) {
-            std:: cout << (int)bufferData[i] << " ";
+    // C++ 风格的回调 lambda
+    auto onMapCallback = [&ready](wgpu::BufferMapAsyncStatus status) {
+        if (status != wgpu::BufferMapAsyncStatus::Success) {
+            std::cout << "buffer2 mapped failed, status=" << (int)status << std::endl;
         }
-        std::cout << "]" << std::endl;
-
-        ctx->buffer.unmap();
+        ready = true;
     };
 
-    Context ctx = { false, buffer2 };
-    wgpuBufferMapAsync(buffer2, wgpu::MapMode::Read, 0, LENGTH, onBuffer2Mapped, (void*)&ctx);
-    while(!ctx.ready) {
+    // 使用 C++ 风格的 mapAsync()
+    buffer2.mapAsync(wgpu::MapMode::Read, 0, LENGTH, std::move(onMapCallback));
+
+    // 轮询设备直到映射完成
+    while (!ready) {
         device.poll(true);
     }
+
+    // 读取映射的数据
+    uint8_t* bufferData = (uint8_t*)buffer2.getConstMappedRange(0, LENGTH);
+    std::cout << "bufferData = [";
+    for (int i = 0; i < LENGTH; i++) {
+        std::cout << (int)bufferData[i] << " ";
+    }
+    std::cout << "]" << std::endl;
+
+    buffer2.unmap();
 
     // 回收
     buffer1.release();
