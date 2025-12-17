@@ -13,6 +13,29 @@
 #include <cassert>
 
 
+
+
+const char* shaderSource = R"(
+@vertex // 归一化设备坐标：左下(-1, -1)   右上(1, 1). 正中间(0, 0).
+fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
+    var p = vec2f(0.0, 0.0);
+    if (in_vertex_index == 0u) {
+        p = vec2f(-0.5, -0.5);
+    } else if (in_vertex_index == 1u) {
+        p = vec2f(0.5, -0.5);
+    } else {
+        p = vec2f(0.0, 0.5);
+    }
+    return vec4f(p, 0.0, 1.0);
+}
+
+@fragment // 这里的location(0) 中的 0 : 对应fragementState.targets中的第0个state
+fn fs_main() -> @location(0) vec4f {
+    return vec4f(1.0, 0.0, 0.0, 1.0);
+}
+)";
+
+
 class Application {
 public:
     Application();
@@ -26,12 +49,16 @@ public:
     bool IsRunning();
 private:
     wgpu::TextureView GetNextSurfaceTextureView();
-
+    void InitializePipeline(wgpu::TextureFormat format);
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
     wgpu::Device device = nullptr;
     wgpu::Queue queue = nullptr;
+
+    std::unique_ptr<wgpu::ErrorCallback> uncapturedErrorCallback;
+
+    wgpu::RenderPipeline pipeline;
 };
 
 int main() {
@@ -52,6 +79,72 @@ int main() {
 
 Application::Application() { }
 Application::~Application() { }
+void Application::InitializePipeline(wgpu::TextureFormat format) {
+    wgpu::ShaderModuleDescriptor shaderDesc;
+    #ifdef WEBGPU_BACKEND_WGPU
+        shaderDesc.hintCount = 0;
+        shaderDesc.hints = nullptr;
+    #endif
+
+    wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
+    shaderCodeDesc.chain.next = nullptr;
+    shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
+    shaderCodeDesc.code = shaderSource;
+
+    shaderDesc.nextInChain = &shaderCodeDesc.chain;
+
+    wgpu::ShaderModule shaderModule = device.createShaderModule(shaderDesc);
+
+    wgpu::RenderPipelineDescriptor pipelineDesc;
+    pipelineDesc.vertex.bufferCount = 0;
+    pipelineDesc.vertex.buffers = nullptr;
+
+    pipelineDesc.vertex.module = shaderModule;
+    pipelineDesc.vertex.entryPoint = "vs_main";
+    pipelineDesc.vertex.constantCount = 0;
+    pipelineDesc.vertex.constants = nullptr;
+
+    pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+    pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
+
+    pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
+    pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
+
+
+
+    wgpu::FragmentState fragmentState;
+    fragmentState.module = shaderModule;
+    fragmentState.entryPoint = "fs_main";
+    fragmentState.constantCount = 0;
+    fragmentState.constants = nullptr;
+
+    wgpu::BlendState blendState;
+    blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
+    blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
+    blendState.color.operation = wgpu::BlendOperation::Add;
+    blendState.alpha.srcFactor = wgpu::BlendFactor::Zero;
+    blendState.alpha.dstFactor = wgpu::BlendFactor::One;
+    blendState.alpha.operation = wgpu::BlendOperation::Add;
+
+
+    wgpu::ColorTargetState colorState;
+    colorState.format = format;
+    colorState.blend = &blendState;
+    colorState.writeMask = wgpu::ColorWriteMask::All;
+
+
+    fragmentState.targetCount = 1;  // 因为count是1，对应 @location(0) 中的 0即为这里的colorState
+    fragmentState.targets = &colorState;
+    pipelineDesc.fragment = &fragmentState;
+
+    pipelineDesc.depthStencil = nullptr;
+    pipelineDesc.multisample.count = 1;
+    pipelineDesc.multisample.alphaToCoverageEnabled = false;
+    pipelineDesc.layout = nullptr;
+    pipeline = device.createRenderPipeline(pipelineDesc);
+
+    shaderModule.release();
+}
 
 wgpu::TextureView Application::GetNextSurfaceTextureView() {
     wgpu::SurfaceTexture surfaceTexture;
@@ -158,7 +251,7 @@ bool Application::Initialize() {
         std::cout << "WebGPU Device Error! Type: " << type << ", message: " << message << std::endl;
     };
     // wgpuDeviceSetUncapturedErrorCallback(device, onDeviceError, nullptr);
-    auto errorCallbackHandle = device.setUncapturedErrorCallback(onDeviceError);
+    uncapturedErrorCallback = device.setUncapturedErrorCallback(onDeviceError);
 
 
     // queue = wgpuDeviceGetQueue(device);     // wgpuQueueRelease
@@ -173,23 +266,30 @@ bool Application::Initialize() {
     // cfgSurface.usage = WGPUTextureUsage_RenderAttachment;
     cfgSurface.usage = wgpu::TextureUsage::RenderAttachment;
     // WGPUTextureFormat textureFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
-    wgpu::TextureFormat textureFormat = surface.getPreferredFormat(adapter);
+    wgpu::TextureFormat textureFormat = surface.getPreferredFormat(adapter);// Store the chosen surface format so pipeline creation can use it
     cfgSurface.format = textureFormat;
 
     cfgSurface.viewFormatCount = 0;
     cfgSurface.viewFormats = nullptr;
     cfgSurface.presentMode = WGPUPresentMode_Fifo;
     cfgSurface.alphaMode = WGPUCompositeAlphaMode_Auto;
-    // wgpuSurfaceConfigure(surface, &cfgSurface);         // wgpuSurfaceUnconfigure
+    // wgpuSurfaceConfigure(surface, &cfgSurface);         // wgpuSurfaceUnconfigure2
     surface.configure(cfgSurface);         // wgpuSurfaceUnconfigure
     std::cout << "-> Configured WebGPU surface." << std::endl;
 
 
     // wgpuAdapterRelease(adapter); // 不再需要了,释放WGPUAdapter
     adapter.release(); // 不再需要了,释放WGPUAdapter
+
+
+    InitializePipeline(textureFormat);
     return true;
 }
 void Application::Terminate() {
+    if (pipeline == nullptr) {
+        pipeline.release();
+        pipeline = nullptr;
+    }
     if (queue) {
         // wgpuQueueRelease(queue);
         queue.release();
@@ -261,6 +361,10 @@ void Application::MainLoop() {
 	// wgpuRenderPassEncoderRelease(renderPass);
 
 	wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);  // wgpuRenderPassEncoderRelease
+
+    renderPass.setPipeline(pipeline);
+    renderPass.draw(3, 1, 0, 0);
+
 	renderPass.end();
 	renderPass.release();
 
