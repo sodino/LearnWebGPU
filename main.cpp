@@ -29,7 +29,7 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) ve
     return vec4f(p, 0.0, 1.0);
 }
 
-@fragment
+@fragment // 这里的location(0) 中的 0 : 对应fragementState.targets中的第0个state
 fn fs_main() -> @location(0) vec4f {
     return vec4f(1.0, 0.0, 0.0, 1.0);
 }
@@ -133,7 +133,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     colorState.writeMask = wgpu::ColorWriteMask::All;
 
 
-    fragmentState.targetCount = 1;
+    fragmentState.targetCount = 1;  // 因为count是1，对应 @location(0) 中的 0即为这里的colorState
     fragmentState.targets = &colorState;
     pipelineDesc.fragment = &fragmentState;
 
@@ -273,7 +273,7 @@ bool Application::Initialize() {
     cfgSurface.viewFormats = nullptr;
     cfgSurface.presentMode = WGPUPresentMode_Fifo;
     cfgSurface.alphaMode = WGPUCompositeAlphaMode_Auto;
-    // wgpuSurfaceConfigure(surface, &cfgSurface);         // wgpuSurfaceUnconfigure
+    // wgpuSurfaceConfigure(surface, &cfgSurface);         // wgpuSurfaceUnconfigure2
     surface.configure(cfgSurface);         // wgpuSurfaceUnconfigure
     std::cout << "-> Configured WebGPU surface." << std::endl;
 
