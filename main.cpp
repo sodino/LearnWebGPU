@@ -50,6 +50,9 @@ public:
 private:
     wgpu::TextureView GetNextSurfaceTextureView();
     void InitializePipeline(wgpu::TextureFormat format);
+
+    // 实现：创建 、 写入 、 复制 、 读取/映射 、 释放这些操作。
+    void PlayingWithBuffers();
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -283,31 +286,103 @@ bool Application::Initialize() {
 
 
     InitializePipeline(textureFormat);
+
+
+    PlayingWithBuffers();
     return true;
 }
+
+void Application::PlayingWithBuffers() {
+    const int LENGTH = 16;
+    // 预备cpu数据，准备写入到gpu
+    std::vector<uint8_t> numbers(LENGTH);
+    for (uint8_t i = 0; i < LENGTH; i ++) {
+        numbers[i] = i;
+    }
+
+
+    wgpu::BufferDescriptor bufferDesc;
+    bufferDesc.label = "Some GPU-side data buffer";
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::CopySrc;
+    bufferDesc.size = LENGTH;
+    bufferDesc.mappedAtCreation = false;
+    // 1. 创建
+    wgpu::Buffer buffer1 = device.createBuffer(bufferDesc);
+
+    bufferDesc.label = "Output buffer";
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
+    wgpu::Buffer buffer2 = device.createBuffer(bufferDesc);
+    // 2. 写入
+    queue.writeBuffer(buffer1, 0, numbers.data(), numbers.size());
+
+    // 3. 复制
+    wgpu::CommandEncoder encoder = device.createCommandEncoder(wgpu::Default);
+    encoder.copyBufferToBuffer(buffer1, 0, buffer2, 0, LENGTH);
+    wgpu::CommandBuffer command = encoder.finish(wgpu::Default);
+    encoder.release();
+    queue.submit(1, &command);
+    command.release();
+
+    // 4. 映射与读取（C++ 风格）
+    bool ready = false;
+
+    // C++ 风格的回调 lambda
+    auto asyncCallback = [&ready](wgpu::BufferMapAsyncStatus status) {
+        if (status != wgpu::BufferMapAsyncStatus::Success) {
+            std::cout << "buffer2 mapped failed, status=" << (int)status << std::endl;
+        }
+        ready = true;
+    };
+
+    // 使用 C++ 风格的 mapAsync()
+    // 这个 返回值，必须持有。一旦不持有，那智能指针所持有的对象就会被回收，mapAsync内部异步处理时，找不到对象，会直接崩溃。那 asyncCallback 再也收不到回调了
+    std::unique_ptr<wgpu::BufferMapCallback> _ = buffer2.mapAsync(wgpu::MapMode::Read, 0, LENGTH, asyncCallback);
+
+    // 轮询设备直到映射完成
+    while (!ready) {
+        // poll : 尝试推动 GPU -> CPU 回调。
+        // GPU是并行异步的，不能保证 poll 第一次时就会有结果，只好一直while了
+        device.poll(true);
+    }
+
+    // 读取映射的数据
+    uint8_t* bufferData = (uint8_t*)buffer2.getConstMappedRange(0, LENGTH);
+    std::cout << "bufferData = [";
+    for (int i = 0; i < LENGTH; i++) {
+        std::cout << (int)bufferData[i] << " ";
+    }
+    std::cout << "]" << std::endl;
+
+    buffer2.unmap(); // 结束 CPU 对 Buffer 的映射访问，把 Buffer 重新交还给 GPU 使用
+
+    // 5. 回收
+    buffer1.release();
+    buffer2.release();
+}
+
 void Application::Terminate() {
-    if (pipeline == nullptr) {
+    if (pipeline != nullptr) {
         pipeline.release();
         pipeline = nullptr;
     }
-    if (queue) {
+    if (queue != nullptr) {
         // wgpuQueueRelease(queue);
         queue.release();
         queue = nullptr;
     }
-    if (device) {
+    if (device != nullptr) {
         // wgpuDeviceRelease(device);
         device.release();
         device = nullptr;
     }
-    if (surface) {
+    if (surface != nullptr) {
         // wgpuSurfaceUnconfigure(surface);
         // wgpuSurfaceRelease(surface);
         surface.unconfigure();
         surface.release();
         surface = nullptr;
     }
-    if (window) {
+    if (window != nullptr) {
         glfwDestroyWindow(window);
         window = nullptr;
     }
@@ -396,7 +471,7 @@ void Application::MainLoop() {
 	// wgpuDeviceTick(device);
     device.tick();
 #elif defined(WEBGPU_BACKEND_WGPU)
-	wgpuDevicePoll(device, false, nullptr);
+	// wgpuDevicePoll(device, false, nullptr);
 	device.poll(false);
 #endif
 }

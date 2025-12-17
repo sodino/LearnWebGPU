@@ -35,7 +35,7 @@ set_target_properties(App PROPERTIES
 if (MSVC)
 	target_compile_options(App PRIVATE /W4)
 else()
-	target_compile_options(App PRIVATE -Wall -Wextra -pedantic)
+	target_compile_options(App PRIVATE -Wall -Wextra -pedantic -Wno-unused-result)
 endif()
 
 if (XCODE)
