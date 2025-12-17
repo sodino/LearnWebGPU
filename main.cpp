@@ -16,7 +16,7 @@
 
 
 const char* shaderSource = R"(
-@vertex
+@vertex // 归一化设备坐标：左下(-1, -1)   右上(1, 1). 正中间(0, 0).
 fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
     var p = vec2f(0.0, 0.0);
     if (in_vertex_index == 0u) {
