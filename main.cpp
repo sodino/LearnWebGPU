@@ -340,6 +340,8 @@ void Application::PlayingWithBuffers() {
 
     // 轮询设备直到映射完成
     while (!ready) {
+        // poll : 尝试推动 GPU -> CPU 回调。
+        // GPU是并行异步的，不能保证 poll 第一次时就会有结果，只好一直while了
         device.poll(true);
     }
 
