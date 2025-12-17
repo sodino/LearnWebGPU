@@ -363,24 +363,24 @@ void Application::Terminate() {
         pipeline.release();
         pipeline = nullptr;
     }
-    if (queue) {
+    if (queue != nullptr) {
         // wgpuQueueRelease(queue);
         queue.release();
         queue = nullptr;
     }
-    if (device) {
+    if (device != nullptr) {
         // wgpuDeviceRelease(device);
         device.release();
         device = nullptr;
     }
-    if (surface) {
+    if (surface != nullptr) {
         // wgpuSurfaceUnconfigure(surface);
         // wgpuSurfaceRelease(surface);
         surface.unconfigure();
         surface.release();
         surface = nullptr;
     }
-    if (window) {
+    if (window != nullptr) {
         glfwDestroyWindow(window);
         window = nullptr;
     }
