@@ -323,12 +323,11 @@ void Application::PlayingWithBuffers() {
     queue.submit(1, &command);
     command.release();
 
-
-    // 映射与读取（C++ 风格）
+    // 4. 映射与读取（C++ 风格）
     bool ready = false;
 
     // C++ 风格的回调 lambda
-    auto onMapCallback = [&ready](wgpu::BufferMapAsyncStatus status) {
+    auto asyncCallback = [&ready](wgpu::BufferMapAsyncStatus status) {
         if (status != wgpu::BufferMapAsyncStatus::Success) {
             std::cout << "buffer2 mapped failed, status=" << (int)status << std::endl;
         }
@@ -336,7 +335,8 @@ void Application::PlayingWithBuffers() {
     };
 
     // 使用 C++ 风格的 mapAsync()
-    buffer2.mapAsync(wgpu::MapMode::Read, 0, LENGTH, std::move(onMapCallback));
+    // 这个 返回值，必须持有。一旦不持有，那智能指针所持有的对象就会被回收，mapAsync内部异步处理时，找不到对象，会直接崩溃。那 asyncCallback 再也收不到回调了
+    std::unique_ptr<wgpu::BufferMapCallback> _ = buffer2.mapAsync(wgpu::MapMode::Read, 0, LENGTH, asyncCallback);
 
     // 轮询设备直到映射完成
     while (!ready) {
@@ -351,15 +351,15 @@ void Application::PlayingWithBuffers() {
     }
     std::cout << "]" << std::endl;
 
-    buffer2.unmap();
+    buffer2.unmap(); // 结束 CPU 对 Buffer 的映射访问，把 Buffer 重新交还给 GPU 使用
 
-    // 回收
+    // 5. 回收
     buffer1.release();
     buffer2.release();
 }
 
 void Application::Terminate() {
-    if (pipeline == nullptr) {
+    if (pipeline != nullptr) {
         pipeline.release();
         pipeline = nullptr;
     }
