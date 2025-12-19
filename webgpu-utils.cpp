@@ -11,6 +11,9 @@ void inspectAdapter(wgpu::Adapter adapter) {
     bool success = adapter.getLimits(&supportedLimits);
     if (success) {
         std::cout << "Adapter limits:" << std::endl;
+        std::cout << "  maxVertexAttributes: " << supportedLimits.limits.maxVertexAttributes << std::endl;
+        std::cout << "  maxVertexBuffers: " << supportedLimits.limits.maxVertexBuffers << std::endl;
+        std::cout << "  maxBufferSize: " << supportedLimits.limits.maxBufferSize << std::endl;
         std::cout << "  maxTextureDimension1D: " << supportedLimits.limits.maxTextureDimension1D << std::endl;
         std::cout << "  maxTextureDimension2D: " << supportedLimits.limits.maxTextureDimension2D << std::endl;
         std::cout << "  maxTextureDimension3D: " << supportedLimits.limits.maxTextureDimension3D << std::endl;
