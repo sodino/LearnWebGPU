@@ -48,7 +48,7 @@ private:
 
     // 因为要传入vertex positon,需要使用vertexBuffer，需要提前申请maxVertexBuffer
     wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
-
+    void InitializeBuffers();
 
 private:
     GLFWwindow* window = nullptr;
@@ -59,6 +59,9 @@ private:
     std::unique_ptr<wgpu::ErrorCallback> uncapturedErrorCallback;
 
     wgpu::RenderPipeline pipeline;
+
+    wgpu::Buffer vertexBuffer;
+    uint32_t vertexCount;
 };
 
 int main() {
@@ -94,6 +97,30 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     return requiredLimits;
+}
+
+
+
+
+void Application::InitializeBuffers() {
+    std::vector<float> vertexData = {
+        -0.5, -0.5,
+        +0.5, -0.5,
+        +0.0, +0.5,
+
+        -0.55, -0.5,
+        -0.05, +0.5,
+        -0.55, +0.5
+    };
+
+    vertexCount = static_cast<uint32_t>(vertexData.size() /2);
+    wgpu::BufferDescriptor bufferDesc;
+    bufferDesc.size = vertexData.size() * sizeof(float);
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+    bufferDesc.mappedAtCreation = false;
+    
+    vertexBuffer = device.createBuffer(bufferDesc);
+    queue.writeBuffer(vertexBuffer, 0, vertexData.data(), bufferDesc.size);
 }
 
 
@@ -302,6 +329,7 @@ bool Application::Initialize() {
 
 
     InitializePipeline(textureFormat);
+    InitializeBuffers();
 
 
     PlayingWithBuffers();
@@ -377,6 +405,10 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
+    if (vertexBuffer != nullptr) {
+        vertexBuffer.release();
+        vertexBuffer = nullptr;
+    }
     if (pipeline != nullptr) {
         pipeline.release();
         pipeline = nullptr;
@@ -454,7 +486,9 @@ void Application::MainLoop() {
 	wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);  // wgpuRenderPassEncoderRelease
 
     renderPass.setPipeline(pipeline);
-    renderPass.draw(3, 1, 0, 0);
+    // renderPass.draw(3, 1, 0, 0);
+    renderPass.setVertexBuffer(0, vertexBuffer, 0, vertexBuffer.getSize());
+    renderPass.draw(vertexCount, 1, 0, 0);
 
 	renderPass.end();
 	renderPass.release();
