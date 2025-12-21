@@ -17,16 +17,8 @@
 
 const char* shaderSource = R"(
 @vertex // 归一化设备坐标：左下(-1, -1)   右上(1, 1). 正中间(0, 0).
-fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
-    var p = vec2f(0.0, 0.0);
-    if (in_vertex_index == 0u) {
-        p = vec2f(-0.5, -0.5);
-    } else if (in_vertex_index == 1u) {
-        p = vec2f(0.5, -0.5);
-    } else {
-        p = vec2f(0.0, 0.5);
-    }
-    return vec4f(p, 0.0, 1.0);
+fn vs_main(@location(0) in_vertex_position : vec2f) -> @builtin(position) vec4f {
+    return vec4f(in_vertex_position, 0.0, 1.0); // 由C++代码输入每个顶点的(x,y)值
 }
 
 @fragment // 这里的location(0) 中的 0 : 对应fragementState.targets中的第0个state
