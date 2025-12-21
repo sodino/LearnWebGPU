@@ -45,6 +45,11 @@ private:
 
     // 实现：创建 、 写入 、 复制 、 读取/映射 、 释放这些操作。
     void PlayingWithBuffers();
+
+    // 因为要传入vertex positon,需要使用vertexBuffer，需要提前申请maxVertexBuffer
+    wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
+
+
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -74,6 +79,24 @@ int main() {
 
 Application::Application() { }
 Application::~Application() { }
+
+
+wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const {
+    wgpu::SupportedLimits supportedLimits;
+    adapter.getLimits(&supportedLimits);
+
+    wgpu::RequiredLimits requiredLimits = wgpu::Default;
+    requiredLimits.limits.maxVertexAttributes = 1;
+    requiredLimits.limits.maxVertexBuffers = 1;      //  6个顶点直接填入一个VertexBuffer 
+    requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float); // 6个顶点，每个顶点一对(x,y)，每个值都是float
+    requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float); // 步长为2:每个顶点需2个float，即一对(x,y)
+
+    requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+    requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+    return requiredLimits;
+}
+
+
 void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::ShaderModuleDescriptor shaderDesc;
     #ifdef WEBGPU_BACKEND_WGPU
@@ -227,12 +250,13 @@ bool Application::Initialize() {
     deviceDesc.nextInChain = nullptr;
     deviceDesc.label = "My WebGPU Device";
     deviceDesc.requiredFeatureCount = 0;
-    deviceDesc.requiredLimits = nullptr;
     deviceDesc.defaultQueue.nextInChain = nullptr;
     deviceDesc.defaultQueue.label = "Default Queue";
     deviceDesc.deviceLostCallback = [](WGPUDeviceLostReason reason, char const * message, void * ) {
         std::cout << "WebGPU Device lost! Reason: " << reason << ", message: " << message << std::endl;
     };
+    wgpu::RequiredLimits requiredLimits = GetRequiredLimits(adapter);
+    deviceDesc.requiredLimits = &requiredLimits;
     
     device = adapter.requestDevice(deviceDesc);       // wgpuDeviceRelease
     if (device == nullptr) {
