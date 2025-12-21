@@ -141,8 +141,20 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::ShaderModule shaderModule = device.createShaderModule(shaderDesc);
 
     wgpu::RenderPipelineDescriptor pipelineDesc;
-    pipelineDesc.vertex.bufferCount = 0;
-    pipelineDesc.vertex.buffers = nullptr;
+
+    wgpu::VertexBufferLayout vertexBufferLayout;
+    wgpu::VertexAttribute positionAttrib;
+    positionAttrib.shaderLocation = 0;
+    positionAttrib.format = wgpu::VertexFormat::Float32x2;
+    positionAttrib.offset = 0;
+
+    vertexBufferLayout.attributeCount = 1;
+    vertexBufferLayout.attributes = &positionAttrib;
+    vertexBufferLayout.arrayStride = 2 * sizeof(float);
+    vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+
+    pipelineDesc.vertex.bufferCount = 1;
+    pipelineDesc.vertex.buffers = &vertexBufferLayout;
 
     pipelineDesc.vertex.module = shaderModule;
     pipelineDesc.vertex.entryPoint = "vs_main";
@@ -184,6 +196,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     pipelineDesc.depthStencil = nullptr;
     pipelineDesc.multisample.count = 1;
+    pipelineDesc.multisample.mask = ~0u;
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
     pipelineDesc.layout = nullptr;
     pipeline = device.createRenderPipeline(pipelineDesc);
@@ -331,8 +344,7 @@ bool Application::Initialize() {
     InitializePipeline(textureFormat);
     InitializeBuffers();
 
-
-    PlayingWithBuffers();
+    // PlayingWithBuffers();
     return true;
 }
 
