@@ -138,14 +138,28 @@ void Application::InitializeBuffers() {
 
     vertexCount = static_cast<uint32_t>(positionData.size() /2);
     wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = positionData.size() * sizeof(float);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
-    
+
+    bufferDesc.size = positionData.size() * sizeof(float);
     bufPosition = device.createBuffer(bufferDesc);
     queue.writeBuffer(bufPosition, 0, positionData.data(), bufferDesc.size);
 
-    
+    std::vector<float> colorData = {
+        //r0, g0, b0
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0,
+
+        1.0, 1.0, 0.0,
+        1.0, 0.0, 1.0,
+        0.0, 1.0, 1.0
+    };
+
+    assert(vertexCount == static_cast<uint32_t>(colorData.size() / 3)); // 检验一下，一个(x,y) 对应一个 rgb
+    bufferDesc.size = colorData.size() * sizeof(float);
+    bufColor = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufColor, 0, colorData.data(), bufferDesc.size);
 }
 
 
