@@ -16,14 +16,29 @@
 
 
 const char* shaderSource = R"(
-@vertex // 归一化设备坐标：左下(-1, -1)   右上(1, 1). 正中间(0, 0).
-fn vs_main(@location(0) in_vertex_position : vec2f) -> @builtin(position) vec4f {
-    return vec4f(in_vertex_position, 0.0, 1.0); // 由C++代码输入每个顶点的(x,y)值
+// 位置+颜色 的顶点属性结构，作为顶点着色器的输入参数
+struct VertexInput {
+    @location(0) position : vec2f,
+    @location(1) color : vec3f,
+};
+
+// 顶点着色器的输出 & 片段着色器的输入
+struct VertexOutput {
+    @builtin(position) position : vec4f,
+    @location(0) color : vec3f,
+};
+
+@vertex 
+fn vs_main(in: VertexInput) -> VertexOutput {
+    var out : VertexOutput; // 输入和输出都使用自定义结构
+    out.position = vec4f(in.position, 0.0, 1.0);
+    out.color = in.color; // 向片段着色器转发 颜色值
+    return out;
 }
 
-@fragment // 这里的location(0) 中的 0 : 对应fragementState.targets中的第0个state
-fn fs_main() -> @location(0) vec4f {
-    return vec4f(1.0, 0.0, 0.0, 1.0);
+@fragment
+fn fs_main(in : VertexOutput) -> @location(0) vec4f {
+    return vec4f(in.color, 1.0);
 }
 )";
 
