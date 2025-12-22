@@ -202,14 +202,17 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
         wgpu::VertexAttribute attColor;
         attColor.shaderLocation = 1; // @location(1)
         attColor.format = wgpu::VertexFormat::Float32x3; // rgb 3个float
-
+        attColor.offset = 0;
         
+        wgpu::VertexBufferLayout layoutColor;
+        layoutColor.attributeCount = 1;
+        layoutColor.attributes = &attColor;
+        layoutColor.arrayStride = 3 * sizeof(float);
+        layoutColor.stepMode = wgpu::VertexStepMode::Vertex;
+        vertexBufferLayout.push_back(layoutColor);
     }
-    wgpu::VertexBufferLayout layoutColor;
-    layoutColor.attributeCount = 1;
 
-
-    pipelineDesc.vertex.bufferCount = 2;
+    pipelineDesc.vertex.bufferCount = static_cast<uint32_t>(vertexBufferLayout.size()); // 其实就是2
     pipelineDesc.vertex.buffers = vertexBufferLayout.data();
 
     pipelineDesc.vertex.module = shaderModule;
