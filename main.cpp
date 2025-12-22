@@ -562,7 +562,8 @@ void Application::MainLoop() {
 
     renderPass.setPipeline(pipeline);
     // renderPass.draw(3, 1, 0, 0);
-    renderPass.setVertexBuffer(0, vertexBuffer, 0, vertexBuffer.getSize());
+    renderPass.setVertexBuffer(0, bufPosition, 0, bufPosition.getSize()); // 对应 @location(0)，也对应 VertexBufferLayout 数组中的第一个VertexBufferLayout
+    renderPass.setVertexBuffer(1, bufColor, 0, bufColor.getSize());       // 对应 @location(1)，也对应 VertexBufferLayout 数组中的第二个VertexBufferLayout
     renderPass.draw(vertexCount, 1, 0, 0);  // 1 : 用当前vertexBuffer，绘制一个物体（虽然这一个物体是2个三角形）。当参数大于1时，即同一份vertexBuffer绘制多份，每一份的位置、颜色可在shader中通过instance_id进行变化（当前代码示例还未涉及）
 
 	renderPass.end();
