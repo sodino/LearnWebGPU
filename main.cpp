@@ -104,11 +104,12 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     adapter.getLimits(&supportedLimits);
 
     wgpu::RequiredLimits requiredLimits = wgpu::Default;
-    requiredLimits.limits.maxVertexAttributes = 1;
-    requiredLimits.limits.maxVertexBuffers = 1;      //  6个顶点直接填入一个VertexBuffer 
-    requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float); // 6个顶点，每个顶点一对(x,y)，每个值都是float
-    requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float); // 步长为2:每个顶点需2个float，即一对(x,y)
+    requiredLimits.limits.maxVertexAttributes = 2;   // position + color : 要两种vertex attribute了
+    requiredLimits.limits.maxVertexBuffers = 1;      //  6组{顶点 + color}直接填入一个VertexBuffer，仍然填1
+    requiredLimits.limits.maxBufferSize = 6 * 5 * sizeof(float); // 6个顶点，每个顶点一对(x,y) + rgb共5个值，每个值都是float
+    requiredLimits.limits.maxVertexBufferArrayStride = 5 * sizeof(float); // 步长为2:每个顶点需5个float，即一组(x,y) + 一组rgb
 
+    requiredLimits.limits.maxInterStageShaderComponents = 3; // 从顶点着色器转发到片段着色器的数据最多为3个float，即rgb。
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     return requiredLimits;
