@@ -181,19 +181,36 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     wgpu::RenderPipelineDescriptor pipelineDesc;
 
-    wgpu::VertexBufferLayout vertexBufferLayout;
-    wgpu::VertexAttribute positionAttrib;
-    positionAttrib.shaderLocation = 0;
-    positionAttrib.format = wgpu::VertexFormat::Float32x2;
-    positionAttrib.offset = 0;
+    std::vector<wgpu::VertexBufferLayout> vertexBufferLayout;
+    
+    {   // 专门对positionData的解析
+        wgpu::VertexAttribute attPosition;
+        attPosition.shaderLocation = 0; // @location(0)
+        attPosition.format = wgpu::VertexFormat::Float32x2;
+        attPosition.offset = 0;
 
-    vertexBufferLayout.attributeCount = 1;
-    vertexBufferLayout.attributes = &positionAttrib;
-    vertexBufferLayout.arrayStride = 2 * sizeof(float);
-    vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
 
-    pipelineDesc.vertex.bufferCount = 1;
-    pipelineDesc.vertex.buffers = &vertexBufferLayout;
+        wgpu::VertexBufferLayout layoutPosition;
+        layoutPosition.attributeCount = 1;
+        layoutPosition.attributes = &attPosition;
+        layoutPosition.arrayStride = 2 * sizeof(float);
+        layoutPosition.stepMode = wgpu::VertexStepMode::Vertex;
+        vertexBufferLayout.push_back(layoutPosition);
+    }
+
+    {   // 专门对colorData的解析
+        wgpu::VertexAttribute attColor;
+        attColor.shaderLocation = 1; // @location(1)
+        attColor.format = wgpu::VertexFormat::Float32x3; // rgb 3个float
+
+        
+    }
+    wgpu::VertexBufferLayout layoutColor;
+    layoutColor.attributeCount = 1;
+
+
+    pipelineDesc.vertex.bufferCount = 2;
+    pipelineDesc.vertex.buffers = vertexBufferLayout.data();
 
     pipelineDesc.vertex.module = shaderModule;
     pipelineDesc.vertex.entryPoint = "vs_main";
