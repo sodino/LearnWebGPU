@@ -75,7 +75,8 @@ private:
 
     wgpu::RenderPipeline pipeline;
 
-    wgpu::Buffer vertexBuffer;
+    wgpu::Buffer bufPosition;
+    wgpu::Buffer bufColor;
     uint32_t vertexCount;
 };
 
@@ -117,7 +118,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
-    
+
     return requiredLimits;
 }
 
@@ -439,9 +440,13 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
-    if (vertexBuffer != nullptr) {
-        vertexBuffer.release();
-        vertexBuffer = nullptr;
+    if (bufPosition != nullptr) {
+        bufPosition.release();
+        bufPosition = nullptr;
+    }
+    if (bufColor != nullptr) {
+        bufColor.release();
+        bufColor = nullptr;
     }
     if (pipeline != nullptr) {
         pipeline.release();
