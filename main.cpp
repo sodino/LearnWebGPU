@@ -17,16 +17,8 @@
 
 const char* shaderSource = R"(
 @vertex // 归一化设备坐标：左下(-1, -1)   右上(1, 1). 正中间(0, 0).
-fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
-    var p = vec2f(0.0, 0.0);
-    if (in_vertex_index == 0u) {
-        p = vec2f(-0.5, -0.5);
-    } else if (in_vertex_index == 1u) {
-        p = vec2f(0.5, -0.5);
-    } else {
-        p = vec2f(0.0, 0.5);
-    }
-    return vec4f(p, 0.0, 1.0);
+fn vs_main(@location(0) in_vertex_position : vec2f) -> @builtin(position) vec4f {
+    return vec4f(in_vertex_position, 0.0, 1.0); // 由C++代码输入每个顶点的(x,y)值
 }
 
 @fragment // 这里的location(0) 中的 0 : 对应fragementState.targets中的第0个state
@@ -53,6 +45,11 @@ private:
 
     // 实现：创建 、 写入 、 复制 、 读取/映射 、 释放这些操作。
     void PlayingWithBuffers();
+
+    // 因为要传入vertex positon,需要使用vertexBuffer，需要提前申请maxVertexBuffer
+    wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
+    void InitializeBuffers();
+
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -62,6 +59,9 @@ private:
     std::unique_ptr<wgpu::ErrorCallback> uncapturedErrorCallback;
 
     wgpu::RenderPipeline pipeline;
+
+    wgpu::Buffer vertexBuffer;
+    uint32_t vertexCount;
 };
 
 int main() {
@@ -82,6 +82,48 @@ int main() {
 
 Application::Application() { }
 Application::~Application() { }
+
+
+wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const {
+    wgpu::SupportedLimits supportedLimits;
+    adapter.getLimits(&supportedLimits);
+
+    wgpu::RequiredLimits requiredLimits = wgpu::Default;
+    requiredLimits.limits.maxVertexAttributes = 1;
+    requiredLimits.limits.maxVertexBuffers = 1;      //  6个顶点直接填入一个VertexBuffer 
+    requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float); // 6个顶点，每个顶点一对(x,y)，每个值都是float
+    requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float); // 步长为2:每个顶点需2个float，即一对(x,y)
+
+    requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+    requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+    return requiredLimits;
+}
+
+
+
+
+void Application::InitializeBuffers() {
+    std::vector<float> vertexData = {
+        -0.5, -0.5,
+        +0.5, -0.5,
+        +0.0, +0.5,
+
+        -0.55, -0.5,
+        -0.05, +0.5,
+        -0.55, +0.5
+    };
+
+    vertexCount = static_cast<uint32_t>(vertexData.size() /2);
+    wgpu::BufferDescriptor bufferDesc;
+    bufferDesc.size = vertexData.size() * sizeof(float);
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+    bufferDesc.mappedAtCreation = false;
+    
+    vertexBuffer = device.createBuffer(bufferDesc);
+    queue.writeBuffer(vertexBuffer, 0, vertexData.data(), bufferDesc.size);
+}
+
+
 void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::ShaderModuleDescriptor shaderDesc;
     #ifdef WEBGPU_BACKEND_WGPU
@@ -99,8 +141,20 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::ShaderModule shaderModule = device.createShaderModule(shaderDesc);
 
     wgpu::RenderPipelineDescriptor pipelineDesc;
-    pipelineDesc.vertex.bufferCount = 0;
-    pipelineDesc.vertex.buffers = nullptr;
+
+    wgpu::VertexBufferLayout vertexBufferLayout;
+    wgpu::VertexAttribute positionAttrib;
+    positionAttrib.shaderLocation = 0;
+    positionAttrib.format = wgpu::VertexFormat::Float32x2;
+    positionAttrib.offset = 0;
+
+    vertexBufferLayout.attributeCount = 1;
+    vertexBufferLayout.attributes = &positionAttrib;
+    vertexBufferLayout.arrayStride = 2 * sizeof(float);
+    vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+
+    pipelineDesc.vertex.bufferCount = 1;
+    pipelineDesc.vertex.buffers = &vertexBufferLayout;
 
     pipelineDesc.vertex.module = shaderModule;
     pipelineDesc.vertex.entryPoint = "vs_main";
@@ -142,6 +196,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     pipelineDesc.depthStencil = nullptr;
     pipelineDesc.multisample.count = 1;
+    pipelineDesc.multisample.mask = ~0u;
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
     pipelineDesc.layout = nullptr;
     pipeline = device.createRenderPipeline(pipelineDesc);
@@ -235,12 +290,13 @@ bool Application::Initialize() {
     deviceDesc.nextInChain = nullptr;
     deviceDesc.label = "My WebGPU Device";
     deviceDesc.requiredFeatureCount = 0;
-    deviceDesc.requiredLimits = nullptr;
     deviceDesc.defaultQueue.nextInChain = nullptr;
     deviceDesc.defaultQueue.label = "Default Queue";
     deviceDesc.deviceLostCallback = [](WGPUDeviceLostReason reason, char const * message, void * ) {
         std::cout << "WebGPU Device lost! Reason: " << reason << ", message: " << message << std::endl;
     };
+    wgpu::RequiredLimits requiredLimits = GetRequiredLimits(adapter);
+    deviceDesc.requiredLimits = &requiredLimits;
     
     device = adapter.requestDevice(deviceDesc);       // wgpuDeviceRelease
     if (device == nullptr) {
@@ -286,9 +342,9 @@ bool Application::Initialize() {
 
 
     InitializePipeline(textureFormat);
+    InitializeBuffers();
 
-
-    PlayingWithBuffers();
+    // PlayingWithBuffers();
     return true;
 }
 
@@ -361,6 +417,10 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
+    if (vertexBuffer != nullptr) {
+        vertexBuffer.release();
+        vertexBuffer = nullptr;
+    }
     if (pipeline != nullptr) {
         pipeline.release();
         pipeline = nullptr;
@@ -438,7 +498,9 @@ void Application::MainLoop() {
 	wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);  // wgpuRenderPassEncoderRelease
 
     renderPass.setPipeline(pipeline);
-    renderPass.draw(3, 1, 0, 0);
+    // renderPass.draw(3, 1, 0, 0);
+    renderPass.setVertexBuffer(0, vertexBuffer, 0, vertexBuffer.getSize());
+    renderPass.draw(vertexCount, 1, 0, 0);  // 1 : 用当前vertexBuffer，绘制一个物体（虽然这一个物体是2个三角形）。当参数大于1时，即同一份vertexBuffer绘制多份，每一份的位置、颜色可在shader中通过instance_id进行变化（当前代码示例还未涉及）
 
 	renderPass.end();
 	renderPass.release();
