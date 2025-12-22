@@ -161,14 +161,24 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::RenderPipelineDescriptor pipelineDesc;
 
     wgpu::VertexBufferLayout vertexBufferLayout;
+    // position + rgb ，需要两种 VertexAttribute
+    std::vector<wgpu::VertexAttribute> vertexAttribs(2);
+
     wgpu::VertexAttribute positionAttrib;
-    positionAttrib.shaderLocation = 0;
+    positionAttrib.shaderLocation = 0; // @location(0)
     positionAttrib.format = wgpu::VertexFormat::Float32x2;
     positionAttrib.offset = 0;
+    vertexAttribs.push_back(positionAttrib);
 
-    vertexBufferLayout.attributeCount = 1;
-    vertexBufferLayout.attributes = &positionAttrib;
-    vertexBufferLayout.arrayStride = 2 * sizeof(float);
+    wgpu::VertexAttribute rgbAttrib;
+    rgbAttrib.shaderLocation = 1;     // @location(1)
+    rgbAttrib.format = wgpu::VertexFormat::Float32x3;
+    rgbAttrib.offset = 2 * sizeof(float); // 前面每一组position的长度是2个float
+    vertexAttribs.push_back(rgbAttrib);
+
+    vertexBufferLayout.attributeCount = vertexAttribs.size();    // 1个position Attrib + 1个rgb Attrib
+    vertexBufferLayout.attributes = vertexAttribs.data();
+    vertexBufferLayout.arrayStride = 5 * sizeof(float);          // 顶点数据 步长为 5 float
     vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
 
     pipelineDesc.vertex.bufferCount = 1;
