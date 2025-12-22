@@ -126,7 +126,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 
 
 void Application::InitializeBuffers() {
-    std::vector<float> vertexData = {
+    std::vector<float> positionData = {
         -0.5, -0.5,
         +0.5, -0.5,
         +0.0, +0.5,
@@ -136,14 +136,16 @@ void Application::InitializeBuffers() {
         -0.55, +0.5
     };
 
-    vertexCount = static_cast<uint32_t>(vertexData.size() /2);
+    vertexCount = static_cast<uint32_t>(positionData.size() /2);
     wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = vertexData.size() * sizeof(float);
+    bufferDesc.size = positionData.size() * sizeof(float);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
     
-    vertexBuffer = device.createBuffer(bufferDesc);
-    queue.writeBuffer(vertexBuffer, 0, vertexData.data(), bufferDesc.size);
+    bufPosition = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufPosition, 0, positionData.data(), bufferDesc.size);
+
+    
 }
 
 
