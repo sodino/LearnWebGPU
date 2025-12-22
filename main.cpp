@@ -162,7 +162,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     wgpu::VertexBufferLayout vertexBufferLayout;
     // position + rgb ，需要两种 VertexAttribute
-    std::vector<wgpu::VertexAttribute> vertexAttribs(2);
+    std::vector<wgpu::VertexAttribute> vertexAttribs;
 
     wgpu::VertexAttribute positionAttrib;
     positionAttrib.shaderLocation = 0; // @location(0)
