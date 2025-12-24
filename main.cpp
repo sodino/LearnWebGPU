@@ -119,16 +119,19 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 
 
 void Application::InitializeBuffers() {
-    std::vector<float> vertexData = {
+    // 定义由两个三角形拼成的正方形的 点数据
+    std::vector<float> pointData = {
         // x0, y0,        r0,  g0,  b0
-        -0.5, -0.5,      1.0, 0.0, 0.0,
-        // x1, y1,        r1,  g1,  b1
-        +0.5, -0.5,      0.0, 1.0, 0.0,
-        +0.0, +0.5,      0.0, 0.0, 1.0,
+        -0.5, -0.5,      1.0, 0.0, 0.0, // 左下 0
+        +0.5, -0.5,      0.0, 1.0, 0.0, // 右下 1
+        +0.5, +0.5,      0.0, 0.0, 1.0, // 右上 2
+        -0.5, +0.5,      1.0, 1.0, 0.0  // 左上 3
+    };
 
-        -0.55, -0.5,     1.0, 1.0, 0.0,
-        -0.05, +0.5,     1.0, 0.0, 1.0,
-        -0.55, +0.5,     0.0, 1.0, 1.0
+    // 定义索引，规则 点数据 如何组成三角形
+    std::vector<uint16_t> indexData = {
+        0, 1, 2, // 右下的三角形
+        0, 2, 3  // 左上的三角形
     };
 
     vertexCount = static_cast<uint32_t>(vertexData.size() /5); // 步长已经变更为 5 了
