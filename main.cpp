@@ -76,7 +76,7 @@ private:
     wgpu::RenderPipeline pipeline;
 
     wgpu::Buffer vertexBuffer;
-    uint32_t vertexCount;
+    uint32_t indexCount;
 };
 
 int main() {
@@ -134,7 +134,7 @@ void Application::InitializeBuffers() {
         0, 2, 3  // 左上的三角形
     };
 
-    vertexCount = static_cast<uint32_t>(vertexData.size() /5); // 步长已经变更为 5 了
+    indexCount = static_cast<uint32_t>(indexData.size()); // 索引才有真实 : 点数据个数
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = vertexData.size() * sizeof(float);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
