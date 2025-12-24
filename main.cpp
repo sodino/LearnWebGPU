@@ -457,9 +457,13 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
-    if (vertexBuffer != nullptr) {
-        vertexBuffer.release();
-        vertexBuffer = nullptr;
+    if (bufPoint != nullptr) {
+        bufPoint.release();
+        bufPoint = nullptr;
+    }
+    if (bufIndex != nullptr) {
+        bufIndex.release();
+        bufIndex = nullptr;
     }
     if (pipeline != nullptr) {
         pipeline.release();
