@@ -77,7 +77,8 @@ private:
 
     wgpu::Buffer bufPoint;
     wgpu::Buffer bufColor;
-    uint32_t vertexCount;
+    wgpu::Buffer bufIndex;
+    uint32_t indexCount;
 };
 
 int main() {
@@ -133,11 +134,10 @@ void Application::InitializeBuffers() {
         -0.5, +0.5      // 左上
     };
 
-    vertexCount = static_cast<uint32_t>(pointData.size() /2);
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
-
+    // 创建 点位置 buffer
     bufferDesc.size = pointData.size() * sizeof(float);
     bufPoint = device.createBuffer(bufferDesc);
     queue.writeBuffer(bufPoint, 0, pointData.data(), bufferDesc.size);
@@ -151,9 +151,24 @@ void Application::InitializeBuffers() {
     };
 
     assert((pointData.size() / 2) == (colorData.size() / 3)); // 检验一下，一个(x,y) 对应一个 rgb
+    // 创建 颜色 buffer
     bufferDesc.size = colorData.size() * sizeof(float);
     bufColor = device.createBuffer(bufferDesc);
     queue.writeBuffer(bufColor, 0, colorData.data(), bufferDesc.size);
+
+
+    std::vector<uint16_t> indexData = {
+        0, 1, 2,
+        0, 2, 3
+    };
+    indexCount = static_cast<uint32_t>(indexData.size()); // 索引才有真实 : 点数据个数
+    // 创建 索引 buffer
+    uint16_t idxSize = indexData.size() * sizeof(uint16_t);
+    bufferDesc.size = (idxSize +3) & ~3; // 向上取值到4的倍数
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
+    bufIndex = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
+
 }
 
 
