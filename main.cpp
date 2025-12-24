@@ -126,34 +126,28 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 
 
 void Application::InitializeBuffers() {
-    std::vector<float> positionData = {
-        -0.5, -0.5,
-        +0.5, -0.5,
-        +0.0, +0.5,
-
-        -0.55, -0.5,
-        -0.05, +0.5,
-        -0.55, +0.5
+    std::vector<float> pointData = {
+        -0.5, -0.5,     // 左下
+        +0.5, -0.5,     // 右下
+        +0.5, +0.5,     // 右上
+        -0.5, +0.5      // 左上
     };
 
-    vertexCount = static_cast<uint32_t>(positionData.size() /2);
+    vertexCount = static_cast<uint32_t>(pointData.size() /2);
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
 
-    bufferDesc.size = positionData.size() * sizeof(float);
+    bufferDesc.size = pointData.size() * sizeof(float);
     bufPosition = device.createBuffer(bufferDesc);
-    queue.writeBuffer(bufPosition, 0, positionData.data(), bufferDesc.size);
+    queue.writeBuffer(bufPosition, 0, pointData.data(), bufferDesc.size);
 
     std::vector<float> colorData = {
         //r0, g0, b0
         1.0, 0.0, 0.0,
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
-
-        1.0, 1.0, 0.0,
-        1.0, 0.0, 1.0,
-        0.0, 1.0, 1.0
+        1.0, 1.0, 0.0
     };
 
     assert(vertexCount == static_cast<uint32_t>(colorData.size() / 3)); // 检验一下，一个(x,y) 对应一个 rgb
@@ -183,7 +177,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     std::vector<wgpu::VertexBufferLayout> vertexBufferLayout;
     
-    {   // 专门对positionData的解析
+    {   // 专门对pointData的解析
         wgpu::VertexAttribute attPosition;
         attPosition.shaderLocation = 0; // @location(0)
         attPosition.format = wgpu::VertexFormat::Float32x2;
