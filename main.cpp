@@ -542,10 +542,10 @@ void Application::MainLoop() {
 	wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);  // wgpuRenderPassEncoderRelease
 
     renderPass.setPipeline(pipeline);
-    // renderPass.draw(3, 1, 0, 0);
     renderPass.setVertexBuffer(0, bufPoint, 0, bufPoint.getSize());
     renderPass.setIndexBuffer(bufIndex, wgpu::IndexFormat::Uint16, 0, bufIndex.getSize());
-    renderPass.draw(indexCount, 1, 0, 0);  // 1 : 用当前vertexBuffer，绘制一个物体（虽然这一个物体是2个三角形）。当参数大于1时，即同一份vertexBuffer绘制多份，每一份的位置、颜色可在shader中通过instance_id进行变化（当前代码示例还未涉及）
+    // renderPass.draw(indexCount, 1, 0, 0);
+    renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
 
 	renderPass.end();
 	renderPass.release();
