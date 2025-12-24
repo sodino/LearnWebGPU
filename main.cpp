@@ -75,7 +75,7 @@ private:
 
     wgpu::RenderPipeline pipeline;
 
-    wgpu::Buffer bufPosition;
+    wgpu::Buffer bufPoint;
     wgpu::Buffer bufColor;
     uint32_t vertexCount;
 };
@@ -139,8 +139,8 @@ void Application::InitializeBuffers() {
     bufferDesc.mappedAtCreation = false;
 
     bufferDesc.size = pointData.size() * sizeof(float);
-    bufPosition = device.createBuffer(bufferDesc);
-    queue.writeBuffer(bufPosition, 0, pointData.data(), bufferDesc.size);
+    bufPoint = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufPoint, 0, pointData.data(), bufferDesc.size);
 
     std::vector<float> colorData = {
         //r0, g0, b0
@@ -150,7 +150,7 @@ void Application::InitializeBuffers() {
         1.0, 1.0, 0.0
     };
 
-    assert(vertexCount == static_cast<uint32_t>(colorData.size() / 3)); // 检验一下，一个(x,y) 对应一个 rgb
+    assert((pointData.size() / 2) == (colorData.size() / 3)); // 检验一下，一个(x,y) 对应一个 rgb
     bufferDesc.size = colorData.size() * sizeof(float);
     bufColor = device.createBuffer(bufferDesc);
     queue.writeBuffer(bufColor, 0, colorData.data(), bufferDesc.size);
@@ -470,9 +470,9 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
-    if (bufPosition != nullptr) {
-        bufPosition.release();
-        bufPosition = nullptr;
+    if (bufPoint != nullptr) {
+        bufPoint.release();
+        bufPoint = nullptr;
     }
     if (bufColor != nullptr) {
         bufColor.release();
@@ -556,7 +556,7 @@ void Application::MainLoop() {
 
     renderPass.setPipeline(pipeline);
     // renderPass.draw(3, 1, 0, 0);
-    renderPass.setVertexBuffer(0, bufPosition, 0, bufPosition.getSize()); // 对应 @location(0)，也对应 VertexBufferLayout 数组中的第一个VertexBufferLayout
+    renderPass.setVertexBuffer(0, bufPoint, 0, bufPoint.getSize()); // 对应 @location(0)，也对应 VertexBufferLayout 数组中的第一个VertexBufferLayout
     renderPass.setVertexBuffer(1, bufColor, 0, bufColor.getSize());       // 对应 @location(1)，也对应 VertexBufferLayout 数组中的第二个VertexBufferLayout
     renderPass.draw(vertexCount, 1, 0, 0);  // 1 : 用当前vertexBuffer，绘制一个物体（虽然这一个物体是2个三角形）。当参数大于1时，即同一份vertexBuffer绘制多份，每一份的位置、颜色可在shader中通过instance_id进行变化（当前代码示例还未涉及）
 
