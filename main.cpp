@@ -165,7 +165,7 @@ void Application::InitializeBuffers() {
     // 创建 索引 buffer
     uint16_t idxSize = indexData.size() * sizeof(uint16_t);
     bufferDesc.size = (idxSize +3) & ~3; // 向上取值到4的倍数
-    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;  // 变更为 Index 索引缓冲区
     bufIndex = device.createBuffer(bufferDesc);
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 
