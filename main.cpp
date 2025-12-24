@@ -16,14 +16,30 @@
 
 
 const char* shaderSource = R"(
-@vertex // 归一化设备坐标：左下(-1, -1)   右上(1, 1). 正中间(0, 0).
-fn vs_main(@location(0) in_vertex_position : vec2f) -> @builtin(position) vec4f {
-    return vec4f(in_vertex_position, 0.0, 1.0); // 由C++代码输入每个顶点的(x,y)值
+// 位置+颜色 的顶点属性结构，作为顶点着色器的输入参数
+struct VertexInput {
+    @location(0) position : vec2f,
+    @location(1) color : vec3f,
+};
+
+// 顶点着色器的输出 & 片段着色器的输入
+struct VertexOutput {
+    @builtin(position) position : vec4f,
+    @location(0) color : vec3f,
+};
+
+@vertex 
+fn vs_main(in: VertexInput) -> VertexOutput {
+    let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
+    var out : VertexOutput; // 输入和输出都使用自定义结构
+    out.position = vec4f(in.position.x, in.position.y * ratio, 0.0, 1.0);
+    out.color = in.color; // 向片段着色器转发 颜色值
+    return out;
 }
 
-@fragment // 这里的location(0) 中的 0 : 对应fragementState.targets中的第0个state
-fn fs_main() -> @location(0) vec4f {
-    return vec4f(1.0, 0.0, 0.0, 1.0);
+@fragment
+fn fs_main(in : VertexOutput) -> @location(0) vec4f {
+    return vec4f(in.color, 1.0);
 }
 )";
 
@@ -60,8 +76,9 @@ private:
 
     wgpu::RenderPipeline pipeline;
 
-    wgpu::Buffer vertexBuffer;
-    uint32_t vertexCount;
+    wgpu::Buffer bufPoint;
+    wgpu::Buffer bufIndex;
+    uint32_t indexCount;
 };
 
 int main() {
@@ -89,11 +106,12 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     adapter.getLimits(&supportedLimits);
 
     wgpu::RequiredLimits requiredLimits = wgpu::Default;
-    requiredLimits.limits.maxVertexAttributes = 1;
-    requiredLimits.limits.maxVertexBuffers = 1;      //  6个顶点直接填入一个VertexBuffer 
-    requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float); // 6个顶点，每个顶点一对(x,y)，每个值都是float
-    requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float); // 步长为2:每个顶点需2个float，即一对(x,y)
+    requiredLimits.limits.maxVertexAttributes = 2;   // position + color : 要两种vertex attribute了
+    requiredLimits.limits.maxVertexBuffers = 1;      //  6组{顶点 + color}直接填入一个VertexBuffer，仍然填1
+    requiredLimits.limits.maxBufferSize = 6 * 5 * sizeof(float); // 6个顶点，每个顶点一对(x,y) + rgb共5个值，每个值都是float
+    requiredLimits.limits.maxVertexBufferArrayStride = 5 * sizeof(float); // 步长为2:每个顶点需5个float，即一组(x,y) + 一组rgb
 
+    requiredLimits.limits.maxInterStageShaderComponents = 3; // 从顶点着色器转发到片段着色器的数据最多为3个float，即rgb。
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     return requiredLimits;
@@ -103,24 +121,37 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 
 
 void Application::InitializeBuffers() {
-    std::vector<float> vertexData = {
-        -0.5, -0.5,
-        +0.5, -0.5,
-        +0.0, +0.5,
-
-        -0.55, -0.5,
-        -0.05, +0.5,
-        -0.55, +0.5
+    // 定义由两个三角形拼成的正方形的 点数据
+    std::vector<float> pointData = {
+        // x0, y0,        r0,  g0,  b0
+        -0.5, -0.5,      1.0, 0.0, 0.0, // 左下 0
+        +0.5, -0.5,      0.0, 1.0, 0.0, // 右下 1
+        +0.5, +0.5,      0.0, 0.0, 1.0, // 右上 2
+        -0.5, +0.5,      1.0, 1.0, 0.0  // 左上 3
     };
 
-    vertexCount = static_cast<uint32_t>(vertexData.size() /2);
+    // 定义索引，规则 点数据 如何组成三角形
+    std::vector<uint16_t> indexData = {
+        0, 1, 2, // 右下的三角形
+        0, 2, 3  // 左上的三角形
+    };
+
+    indexCount = static_cast<uint32_t>(indexData.size()); // 索引才有真实 : 点数据个数
+
     wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = vertexData.size() * sizeof(float);
-    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
-    
-    vertexBuffer = device.createBuffer(bufferDesc);
-    queue.writeBuffer(vertexBuffer, 0, vertexData.data(), bufferDesc.size);
+    // 创建点数据 buffer
+    bufferDesc.size = pointData.size() * sizeof(float);  // float是4bytes，整个size必定是4的倍数了
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+    bufPoint = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufPoint, 0, pointData.data(), bufferDesc.size);
+
+    // 创建索引 buffer
+    uint16_t idxSize = indexData.size() * sizeof(uint16_t);
+    bufferDesc.size = (idxSize +3) & ~3; // 向上取值到4的倍数
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index; // 变更为 Index 索引缓冲区
+    bufIndex = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 }
 
 
@@ -143,14 +174,24 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::RenderPipelineDescriptor pipelineDesc;
 
     wgpu::VertexBufferLayout vertexBufferLayout;
+    // position + rgb ，需要两种 VertexAttribute
+    std::vector<wgpu::VertexAttribute> vertexAttribs;
+
     wgpu::VertexAttribute positionAttrib;
-    positionAttrib.shaderLocation = 0;
+    positionAttrib.shaderLocation = 0; // @location(0)
     positionAttrib.format = wgpu::VertexFormat::Float32x2;
     positionAttrib.offset = 0;
+    vertexAttribs.push_back(positionAttrib);
 
-    vertexBufferLayout.attributeCount = 1;
-    vertexBufferLayout.attributes = &positionAttrib;
-    vertexBufferLayout.arrayStride = 2 * sizeof(float);
+    wgpu::VertexAttribute rgbAttrib;
+    rgbAttrib.shaderLocation = 1;     // @location(1)
+    rgbAttrib.format = wgpu::VertexFormat::Float32x3;
+    rgbAttrib.offset = 2 * sizeof(float); // 前面每一组position的长度是2个float
+    vertexAttribs.push_back(rgbAttrib);
+
+    vertexBufferLayout.attributeCount = vertexAttribs.size();    // 1个position Attrib + 1个rgb Attrib
+    vertexBufferLayout.attributes = vertexAttribs.data();
+    vertexBufferLayout.arrayStride = 5 * sizeof(float);          // 顶点数据 步长为 5 float
     vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
 
     pipelineDesc.vertex.bufferCount = 1;
@@ -417,9 +458,13 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
-    if (vertexBuffer != nullptr) {
-        vertexBuffer.release();
-        vertexBuffer = nullptr;
+    if (bufPoint != nullptr) {
+        bufPoint.release();
+        bufPoint = nullptr;
+    }
+    if (bufIndex != nullptr) {
+        bufIndex.release();
+        bufIndex = nullptr;
     }
     if (pipeline != nullptr) {
         pipeline.release();
@@ -498,9 +543,10 @@ void Application::MainLoop() {
 	wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);  // wgpuRenderPassEncoderRelease
 
     renderPass.setPipeline(pipeline);
-    // renderPass.draw(3, 1, 0, 0);
-    renderPass.setVertexBuffer(0, vertexBuffer, 0, vertexBuffer.getSize());
-    renderPass.draw(vertexCount, 1, 0, 0);  // 1 : 用当前vertexBuffer，绘制一个物体（虽然这一个物体是2个三角形）。当参数大于1时，即同一份vertexBuffer绘制多份，每一份的位置、颜色可在shader中通过instance_id进行变化（当前代码示例还未涉及）
+    renderPass.setVertexBuffer(0, bufPoint, 0, bufPoint.getSize());
+    renderPass.setIndexBuffer(bufIndex, wgpu::IndexFormat::Uint16, 0, bufIndex.getSize());
+    // renderPass.draw(indexCount, 1, 0, 0);
+    renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
 
 	renderPass.end();
 	renderPass.release();
