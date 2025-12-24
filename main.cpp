@@ -493,6 +493,10 @@ void Application::Terminate() {
         bufColor.release();
         bufColor = nullptr;
     }
+    if (bufIndex != nullptr) {
+        bufIndex.release();
+        bufIndex = nullptr;
+    }
     if (pipeline != nullptr) {
         pipeline.release();
         pipeline = nullptr;
