@@ -30,8 +30,9 @@ struct VertexOutput {
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
+    let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
-    out.position = vec4f(in.position, 0.0, 1.0);
+    out.position = vec4f(in.position.x, in.position.y * ratio, 0.0, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
