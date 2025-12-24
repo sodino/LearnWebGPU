@@ -75,7 +75,8 @@ private:
 
     wgpu::RenderPipeline pipeline;
 
-    wgpu::Buffer vertexBuffer;
+    wgpu::Buffer bufPoint;
+    wgpu::Buffer bufIndex;
     uint32_t indexCount;
 };
 
@@ -135,13 +136,21 @@ void Application::InitializeBuffers() {
     };
 
     indexCount = static_cast<uint32_t>(indexData.size()); // 索引才有真实 : 点数据个数
+
     wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = vertexData.size() * sizeof(float);
-    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
-    
-    vertexBuffer = device.createBuffer(bufferDesc);
-    queue.writeBuffer(vertexBuffer, 0, vertexData.data(), bufferDesc.size);
+    // 创建点数据 buffer
+    bufferDesc.size = pointData.size() * sizeof(float);  // float是4bytes，整个size必定是4的倍数了
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+    bufPoint = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufPoint, 0, pointData.data(), bufferDesc.size);
+
+    // 创建索引 buffer
+    uint16_t idxSize = indexData.size() * sizeof(uint16_t);
+    bufferDesc.size = (idxSize +3) & ~3; // 向上取值到4的倍数
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
+    bufIndex = device.createBuffer(bufferDesc);
+    queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 }
 
 
