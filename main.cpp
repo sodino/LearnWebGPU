@@ -88,6 +88,8 @@ private:
     uint32_t indexCount;
 
     wgpu::Buffer bufUniform;
+    wgpu::BindGroupLayout layoutBindGroup;
+    wgpu::PipelineLayout layoutPipeline;
 };
 
 int main() {
@@ -260,7 +262,28 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     pipelineDesc.multisample.count = 1;
     pipelineDesc.multisample.mask = ~0u;
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
-    pipelineDesc.layout = nullptr;
+
+    // 创建 BindGroupLayoutEntry 
+    wgpu::BindGroupLayoutEntry groupEntry = wgpu::Default;
+    groupEntry.binding = 0; // 对应wgsl中的 @binding(0)
+    groupEntry.visibility = wgpu::ShaderStage::Vertex; // 在顶点着色器阶段能访问这个资源
+    groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
+    groupEntry.buffer.minBindingSize = 4 * sizeof(float); // buffer 最小对齐要求：16 byte的倍数
+
+    // 创建 BindGroupLayout ，并带上上述的BindGroupLayoutEntry
+    wgpu::BindGroupLayoutDescriptor descGroupLayout{};
+    descGroupLayout.entryCount = 1; // 目前只有一个 uniform 变量
+    descGroupLayout.entries = &groupEntry;
+    layoutBindGroup = device.createBindGroupLayout(descGroupLayout);
+
+    // 创建 PipelineLayout
+    wgpu::PipelineLayoutDescriptor descPipelineLayout{};
+    descPipelineLayout.bindGroupLayoutCount = 1;
+    descPipelineLayout.bindGroupLayouts = (WGPUBindGroupLayout*)&layoutBindGroup; // 转成C的结构??!!
+    layoutPipeline = device.createPipelineLayout(descPipelineLayout);
+
+
+    pipelineDesc.layout = layoutPipeline;
     pipeline = device.createRenderPipeline(pipelineDesc);
 
     shaderModule.release();
@@ -479,6 +502,14 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
+    if (layoutPipeline != nullptr) {
+        layoutPipeline.release();
+        layoutPipeline = nullptr;
+    }
+    if (layoutBindGroup != nullptr) {
+        layoutBindGroup.release();
+        layoutBindGroup = nullptr;
+    }
     if (bufUniform != nullptr) {
         bufUniform.release();
         bufUniform = nullptr;
