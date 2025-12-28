@@ -72,7 +72,7 @@ private:
     // 因为要传入vertex positon,需要使用vertexBuffer，需要提前申请maxVertexBuffer
     wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
     void InitializeBuffers();
-
+    void InitializeBindGroups();
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -87,6 +87,7 @@ private:
     wgpu::Buffer bufIndex;
     uint32_t indexCount;
 
+    wgpu::BindGroup bindGroup;
     wgpu::Buffer bufUniform;
     wgpu::BindGroupLayout layoutBindGroup;
     wgpu::PipelineLayout layoutPipeline;
@@ -134,7 +135,19 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 }
 
 
+void Application::InitializeBindGroups() {
+    wgpu::BindGroupEntry entry{};
+    entry.binding = 0; // 对应 @binding(0)，这里不再是解释，而是直接赋值 bufUniform 的作用。
+    entry.buffer = bufUniform;
+    entry.offset = 0;
+    entry.size = 4 * sizeof(float);
 
+    wgpu::BindGroupDescriptor descBindGroup{};
+    descBindGroup.layout = layoutBindGroup;
+    descBindGroup.entryCount = 1;
+    descBindGroup.entries = &entry;
+    bindGroup = device.createBindGroup(descBindGroup);
+}
 
 void Application::InitializeBuffers() {
     // 定义由两个三角形拼成的正方形的 点数据
@@ -265,7 +278,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     // 创建 BindGroupLayoutEntry 
     wgpu::BindGroupLayoutEntry groupEntry = wgpu::Default;
-    groupEntry.binding = 0; // 对应wgsl中的 @binding(0)
+    groupEntry.binding = 0; // 对应wgsl中的 @binding(0)，这里最终是解释 layout 的作用
     groupEntry.visibility = wgpu::ShaderStage::Vertex; // 在顶点着色器阶段能访问这个资源
     groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
     groupEntry.buffer.minBindingSize = 4 * sizeof(float); // buffer 最小对齐要求：16 byte的倍数
@@ -428,7 +441,8 @@ bool Application::Initialize() {
 
     InitializePipeline(textureFormat);
     InitializeBuffers();
-
+    InitializeBindGroups();
+    
     // PlayingWithBuffers();
     return true;
 }
@@ -502,6 +516,10 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
+    if (bindGroup != nullptr) {
+        bindGroup.release();
+        bindGroup = nullptr;
+    }
     if (layoutPipeline != nullptr) {
         layoutPipeline.release();
         layoutPipeline = nullptr;
