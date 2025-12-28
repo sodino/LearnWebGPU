@@ -578,6 +578,10 @@ void Application::MainLoop() {
 	wgpu::TextureView targetView = GetNextSurfaceTextureView();
 	if (!targetView) return;
 
+    // 将时间写入到 uniform buffer 中
+    float t = static_cast<float>(glfwGetTime());
+    queue.writeBuffer(bufUniform, 0, &t, sizeof(float));
+
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
 	wgpu::CommandEncoderDescriptor encoderDesc = {};
@@ -619,6 +623,7 @@ void Application::MainLoop() {
     renderPass.setPipeline(pipeline);
     renderPass.setVertexBuffer(0, bufPoint, 0, bufPoint.getSize());
     renderPass.setIndexBuffer(bufIndex, wgpu::IndexFormat::Uint16, 0, bufIndex.getSize());
+    renderPass.setBindGroup(0, bindGroup, 0, nullptr); // unfirom buffer 与 bind Group绑定&更新
     // renderPass.draw(indexCount, 1, 0, 0);
     renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
 
