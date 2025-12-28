@@ -28,11 +28,18 @@ struct VertexOutput {
     @location(0) color : vec3f,
 };
 
+@group(0) @binding(0)
+var<uniform> uTime : f32;
+
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
+    var centre = vec2f(0.0, 0.0);
+    // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
+    var point = centre + 0.3 * vec2f(cos(uTime), sin(uTime));
+
     let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
-    out.position = vec4f(in.position.x, in.position.y * ratio, 0.0, 1.0);
+    out.position = vec4f(in.position.x + point.x, (in.position.y + point.y) * ratio, 0.0, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
@@ -65,7 +72,7 @@ private:
     // 因为要传入vertex positon,需要使用vertexBuffer，需要提前申请maxVertexBuffer
     wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
     void InitializeBuffers();
-
+    void InitializeBindGroups();
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -79,6 +86,11 @@ private:
     wgpu::Buffer bufPoint;
     wgpu::Buffer bufIndex;
     uint32_t indexCount;
+
+    wgpu::BindGroup bindGroup;
+    wgpu::Buffer bufUniform;
+    wgpu::BindGroupLayout layoutBindGroup;
+    wgpu::PipelineLayout layoutPipeline;
 };
 
 int main() {
@@ -114,11 +126,28 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     requiredLimits.limits.maxInterStageShaderComponents = 3; // 从顶点着色器转发到片段着色器的数据最多为3个float，即rgb。
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+
+    // 为uniform 配置limits
+    requiredLimits.limits.maxBindGroups = 1;
+    requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
+    requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
     return requiredLimits;
 }
 
 
+void Application::InitializeBindGroups() {
+    wgpu::BindGroupEntry entry{};
+    entry.binding = 0; // 对应 @binding(0)，这里不再是解释，而是直接赋值 bufUniform 的作用。
+    entry.buffer = bufUniform;
+    entry.offset = 0;
+    entry.size = 4 * sizeof(float);
 
+    wgpu::BindGroupDescriptor descBindGroup{};
+    descBindGroup.layout = layoutBindGroup;
+    descBindGroup.entryCount = 1;
+    descBindGroup.entries = &entry;
+    bindGroup = device.createBindGroup(descBindGroup);
+}
 
 void Application::InitializeBuffers() {
     // 定义由两个三角形拼成的正方形的 点数据
@@ -152,6 +181,13 @@ void Application::InitializeBuffers() {
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index; // 变更为 Index 索引缓冲区
     bufIndex = device.createBuffer(bufferDesc);
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
+
+    // 创建Uniform buffer
+    bufferDesc.size = 4 * sizeof(float); // uniform buffer的size必须是16 bytes的倍数（虽然当前例子只使用一个f32的uniform，会导致余留出空着的3个f32）
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
+    bufUniform = device.createBuffer(bufferDesc);
+    float currentTime = 1.0f; // 先写入一个默认值吧...
+    queue.writeBuffer(bufUniform, 0, &currentTime, sizeof(float));
 }
 
 
@@ -239,7 +275,28 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     pipelineDesc.multisample.count = 1;
     pipelineDesc.multisample.mask = ~0u;
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
-    pipelineDesc.layout = nullptr;
+
+    // 创建 BindGroupLayoutEntry 
+    wgpu::BindGroupLayoutEntry groupEntry = wgpu::Default;
+    groupEntry.binding = 0; // 对应wgsl中的 @binding(0)，这里最终是解释 layout 的作用
+    groupEntry.visibility = wgpu::ShaderStage::Vertex; // 在顶点着色器阶段能访问这个资源
+    groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
+    groupEntry.buffer.minBindingSize = 4 * sizeof(float); // buffer 最小对齐要求：16 byte的倍数
+
+    // 创建 BindGroupLayout ，并带上上述的BindGroupLayoutEntry
+    wgpu::BindGroupLayoutDescriptor descGroupLayout{};
+    descGroupLayout.entryCount = 1; // 目前只有一个 uniform 变量
+    descGroupLayout.entries = &groupEntry;
+    layoutBindGroup = device.createBindGroupLayout(descGroupLayout);
+
+    // 创建 PipelineLayout
+    wgpu::PipelineLayoutDescriptor descPipelineLayout{};
+    descPipelineLayout.bindGroupLayoutCount = 1;
+    descPipelineLayout.bindGroupLayouts = (WGPUBindGroupLayout*)&layoutBindGroup; // 转成C的结构??!!
+    layoutPipeline = device.createPipelineLayout(descPipelineLayout);
+
+
+    pipelineDesc.layout = layoutPipeline;
     pipeline = device.createRenderPipeline(pipelineDesc);
 
     shaderModule.release();
@@ -384,7 +441,8 @@ bool Application::Initialize() {
 
     InitializePipeline(textureFormat);
     InitializeBuffers();
-
+    InitializeBindGroups();
+    
     // PlayingWithBuffers();
     return true;
 }
@@ -458,6 +516,22 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
+    if (bindGroup != nullptr) {
+        bindGroup.release();
+        bindGroup = nullptr;
+    }
+    if (layoutPipeline != nullptr) {
+        layoutPipeline.release();
+        layoutPipeline = nullptr;
+    }
+    if (layoutBindGroup != nullptr) {
+        layoutBindGroup.release();
+        layoutBindGroup = nullptr;
+    }
+    if (bufUniform != nullptr) {
+        bufUniform.release();
+        bufUniform = nullptr;
+    }
     if (bufPoint != nullptr) {
         bufPoint.release();
         bufPoint = nullptr;
@@ -504,6 +578,10 @@ void Application::MainLoop() {
 	wgpu::TextureView targetView = GetNextSurfaceTextureView();
 	if (!targetView) return;
 
+    // 将时间写入到 uniform buffer 中
+    float t = static_cast<float>(glfwGetTime());
+    queue.writeBuffer(bufUniform, 0, &t, sizeof(float));
+
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
 	wgpu::CommandEncoderDescriptor encoderDesc = {};
@@ -545,6 +623,7 @@ void Application::MainLoop() {
     renderPass.setPipeline(pipeline);
     renderPass.setVertexBuffer(0, bufPoint, 0, bufPoint.getSize());
     renderPass.setIndexBuffer(bufIndex, wgpu::IndexFormat::Uint16, 0, bufIndex.getSize());
+    renderPass.setBindGroup(0, bindGroup, 0, nullptr); // unfirom buffer 与 bind Group绑定&更新
     // renderPass.draw(indexCount, 1, 0, 0);
     renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
 
