@@ -86,6 +86,8 @@ private:
     wgpu::Buffer bufPoint;
     wgpu::Buffer bufIndex;
     uint32_t indexCount;
+
+    wgpu::Buffer bufUniform;
 };
 
 int main() {
@@ -164,6 +166,11 @@ void Application::InitializeBuffers() {
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index; // 变更为 Index 索引缓冲区
     bufIndex = device.createBuffer(bufferDesc);
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
+
+    // 创建Uniform buffer
+    bufferDesc.size = 4 * sizeof(float); // uniform buffer的size必须是16 bytes的倍数（虽然当前例子只使用一个f32的uniform，会导致余留出空着的3个f32）
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
+    bufUniform = device.createBuffer(bufferDesc);
 }
 
 
@@ -470,6 +477,10 @@ void Application::PlayingWithBuffers() {
 }
 
 void Application::Terminate() {
+    if (bufUniform != nullptr) {
+        bufUniform.release();
+        bufUniform = nullptr;
+    }
     if (bufPoint != nullptr) {
         bufPoint.release();
         bufPoint = nullptr;
