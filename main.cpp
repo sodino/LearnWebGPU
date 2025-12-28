@@ -28,11 +28,18 @@ struct VertexOutput {
     @location(0) color : vec3f,
 };
 
+@group(0) @binding(0)
+var<uniform> uTime : f32;
+
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
+    var centre = vec2f(0.0, 0.0);
+    // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
+    var point = centre + 0.3 * vec2f(cos(uTime), sin(uTime));
+
     let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
-    out.position = vec4f(in.position.x, in.position.y * ratio, 0.0, 1.0);
+    out.position = vec4f(in.position.x + point.x, (in.position.y + point.y) * ratio, 0.0, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
