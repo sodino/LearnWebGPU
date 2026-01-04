@@ -129,7 +129,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 
     // 为uniform 配置limits
     requiredLimits.limits.maxBindGroups = 1;
-    requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
+    requiredLimits.limits.maxUniformBuffersPerShaderStage = 2; // 现在wgsl脚本要对两个uniform可见了
     requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
     return requiredLimits;
 }
