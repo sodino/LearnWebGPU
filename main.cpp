@@ -29,13 +29,13 @@ struct VertexOutput {
 };
 
 @group(0) @binding(0)
-var<uniform> uTime : f32;
+var<uniform> offsetX : f32;
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
     var centre = vec2f(0.0, 0.0);
     // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
-    var point = centre + 0.3 * vec2f(cos(uTime), sin(uTime));
+    var point = centre + 0.3 * vec2f(offsetX, 0);
 
     let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
@@ -580,7 +580,8 @@ void Application::MainLoop() {
 
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
-    queue.writeBuffer(bufUniform, 0, &t, sizeof(float));
+    float offsetX = cosf(t);
+    queue.writeBuffer(bufUniform, 0, &offsetX, sizeof(float));
 
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
