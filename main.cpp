@@ -88,7 +88,7 @@ private:
     uint32_t indexCount;
 
     wgpu::BindGroup bindGroup;
-    wgpu::Buffer bufUniform;
+    wgpu::Buffer bufUniform_offsetX;
     wgpu::BindGroupLayout layoutBindGroup;
     wgpu::PipelineLayout layoutPipeline;
 };
@@ -138,7 +138,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 void Application::InitializeBindGroups() {
     wgpu::BindGroupEntry entry{};
     entry.binding = 0; // 对应 @binding(0)，这里不再是解释，而是直接赋值 bufUniform 的作用。
-    entry.buffer = bufUniform;
+    entry.buffer = bufUniform_offsetX;
     entry.offset = 0;
     entry.size = 4 * sizeof(float);
 
@@ -185,9 +185,9 @@ void Application::InitializeBuffers() {
     // 创建Uniform buffer
     bufferDesc.size = 4 * sizeof(float); // uniform buffer的size必须是16 bytes的倍数（虽然当前例子只使用一个f32的uniform，会导致余留出空着的3个f32）
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
-    bufUniform = device.createBuffer(bufferDesc);
+    bufUniform_offsetX = device.createBuffer(bufferDesc);
     float currentTime = 1.0f; // 先写入一个默认值吧...
-    queue.writeBuffer(bufUniform, 0, &currentTime, sizeof(float));
+    queue.writeBuffer(bufUniform_offsetX, 0, &currentTime, sizeof(float));
 }
 
 
@@ -528,9 +528,9 @@ void Application::Terminate() {
         layoutBindGroup.release();
         layoutBindGroup = nullptr;
     }
-    if (bufUniform != nullptr) {
-        bufUniform.release();
-        bufUniform = nullptr;
+    if (bufUniform_offsetX != nullptr) {
+        bufUniform_offsetX.release();
+        bufUniform_offsetX = nullptr;
     }
     if (bufPoint != nullptr) {
         bufPoint.release();
@@ -581,7 +581,7 @@ void Application::MainLoop() {
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
     float offsetX = cosf(t);
-    queue.writeBuffer(bufUniform, 0, &offsetX, sizeof(float));
+    queue.writeBuffer(bufUniform_offsetX, 0, &offsetX, sizeof(float));
 
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
