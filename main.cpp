@@ -281,16 +281,25 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
 
     // 创建 BindGroupLayoutEntry 
-    wgpu::BindGroupLayoutEntry groupEntry = wgpu::Default;
-    groupEntry.binding = 0; // 对应wgsl中的 @binding(0)，这里最终是解释 layout 的作用
-    groupEntry.visibility = wgpu::ShaderStage::Vertex; // 在顶点着色器阶段能访问这个资源
-    groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
-    groupEntry.buffer.minBindingSize = 4 * sizeof(float); // buffer 最小对齐要求：16 byte的倍数
+    std::vector<wgpu::BindGroupLayoutEntry> vecEntry{};
+    wgpu::BindGroupLayoutEntry groupEntryX = wgpu::Default;
+    groupEntryX.binding = 0; // 对应wgsl中的 @binding(0)，这里最终是解释 layout 的作用
+    groupEntryX.visibility = wgpu::ShaderStage::Vertex; // 在顶点着色器阶段能访问这个资源
+    groupEntryX.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
+    groupEntryX.buffer.minBindingSize = 4 * sizeof(float); // buffer 最小对齐要求：16 byte的倍数
+    vecEntry.push_back(groupEntryX);
+
+    wgpu::BindGroupLayoutEntry groupEntryY = wgpu::Default;
+    groupEntryY.binding = 1; // // 对应wgsl中的 @binding(1)，这里最终是解释 layout 的作用
+    groupEntryY.visibility = wgpu::ShaderStage::Vertex;
+    groupEntryY.buffer.type = wgpu::BufferBindingType::Uniform;// 当前@binding(1)是 Uniform 类型
+    groupEntryY.buffer.minBindingSize = 4 * sizeof(float);
+    vecEntry.push_back(groupEntryY);
 
     // 创建 BindGroupLayout ，并带上上述的BindGroupLayoutEntry
     wgpu::BindGroupLayoutDescriptor descGroupLayout{};
-    descGroupLayout.entryCount = 1; // 目前只有一个 uniform 变量
-    descGroupLayout.entries = &groupEntry;
+    descGroupLayout.entryCount = 2; // 目前有两个 uniform 变量了
+    descGroupLayout.entries = vecEntry.data();
     layoutBindGroup = device.createBindGroupLayout(descGroupLayout);
 
     // 创建 PipelineLayout
