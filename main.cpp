@@ -89,6 +89,7 @@ private:
 
     wgpu::BindGroup bindGroup;
     wgpu::Buffer bufUniform_offsetX;
+    wgpu::Buffer bufUniform_offsetY;
     wgpu::BindGroupLayout layoutBindGroup;
     wgpu::PipelineLayout layoutPipeline;
 };
@@ -531,6 +532,10 @@ void Application::Terminate() {
     if (bufUniform_offsetX != nullptr) {
         bufUniform_offsetX.release();
         bufUniform_offsetX = nullptr;
+    }
+    if (bufUniform_offsetY != nullptr) {
+        bufUniform_offsetY.release();
+        bufUniform_offsetY = nullptr;
     }
     if (bufPoint != nullptr) {
         bufPoint.release();
