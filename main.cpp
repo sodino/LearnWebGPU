@@ -589,7 +589,9 @@ void Application::MainLoop() {
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
     float offsetX = cosf(t);
+    float offsetY = sinf(t);
     queue.writeBuffer(bufUniform_offsetX, 0, &offsetX, sizeof(float));
+    queue.writeBuffer(bufUniform_offsetY, 0, &offsetY, sizeof(float));
 
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
