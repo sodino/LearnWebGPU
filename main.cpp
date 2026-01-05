@@ -28,14 +28,18 @@ struct VertexOutput {
     @location(0) color : vec3f,
 };
 
+struct MyUniforms {
+    x : f32,
+    y : f32,
+};
 @group(0) @binding(0)
-var<uniform> uTime : f32;
+var<uniform> offset : MyUniforms;
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
     var centre = vec2f(0.0, 0.0);
     // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
-    var point = centre + 0.3 * vec2f(cos(uTime), sin(uTime));
+    var point = centre + 0.3 * vec2f(offset.x, offset.y);
 
     let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
