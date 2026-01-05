@@ -153,7 +153,7 @@ void Application::InitializeBindGroups() {
     entry.binding = 0; // 对应 @binding(0)，这里不再是解释，而是直接赋值 bufUniform 的作用。
     entry.buffer = bufUniform;
     entry.offset = 0;
-    entry.size = 4 * sizeof(float);
+    entry.size = sizeof(MyUniforms);
 
     wgpu::BindGroupDescriptor descBindGroup{};
     descBindGroup.layout = layoutBindGroup;
