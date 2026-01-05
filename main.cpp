@@ -599,6 +599,9 @@ void Application::MainLoop() {
     my.x = cosf(t);
     my.y = sinf(t);
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
+    // 注意uniform 不是“字段级更新”，而是“16 字节块级一致性模型” ： 故意分成两次write ，极有可能导致数据不同步。也会报错：Copy of 4..20 would end up overrunning the bounds of the Destination buffer of size 16
+    // queue.writeBuffer(bufUniform, offsetof(MyUniforms, x), &my.x, sizeof(MyUniforms));
+    // queue.writeBuffer(bufUniform, offsetof(MyUniforms, y), &my.y, sizeof(MyUniforms));
 
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
