@@ -598,10 +598,11 @@ void Application::MainLoop() {
     MyUniforms my;
     my.x = cosf(t);
     my.y = sinf(t);
-    queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
-    // 注意uniform 不是“字段级更新”，而是“16 字节块级一致性模型” ： 故意分成两次write ，极有可能导致数据不同步。也会报错：Copy of 4..20 would end up overrunning the bounds of the Destination buffer of size 16
-    // queue.writeBuffer(bufUniform, offsetof(MyUniforms, x), &my.x, sizeof(MyUniforms));
-    // queue.writeBuffer(bufUniform, offsetof(MyUniforms, y), &my.y, sizeof(MyUniforms));
+    // queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
+    // 故意分成两次write，虽然也可以，但这违背了uniform的设计思想：uniform 不是“字段级更新”，而是“16 字节块级一致性模型”，存在数据不同步的风险。
+    std::cout << "TestDemo : offset x=" << offsetof(MyUniforms, x) << " y="<< offsetof(MyUniforms, y) << std::endl;
+    queue.writeBuffer(bufUniform, offsetof(MyUniforms, x), &my.x, sizeof(float));
+    queue.writeBuffer(bufUniform, offsetof(MyUniforms, y), &my.y, sizeof(float));
 
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
