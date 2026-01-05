@@ -83,9 +83,9 @@ private:
     struct MyUniforms {
         float x;
         float y;
-        float _[2]; // struct得凑齐 16 bytes，为uniform buffer 内存对齐..
+        float _[2];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
     };
-    static_assert(sizeof(MyUniforms) % 4 == 0); // 目前最大是 float/4bytes，就必须是4byte对齐
+    static_assert(sizeof(MyUniforms) % 16 == 0); // 目前最大是 float/4bytes，就必须是4byte对齐
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -196,7 +196,7 @@ void Application::InitializeBuffers() {
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 
     // 创建Uniform buffer
-    bufferDesc.size = sizeof(MyUniforms); // uniform buffer的size必须是16 bytes的倍数（虽然当前例子只使用一个f32的uniform，会导致余留出空着的3个f32）
+    bufferDesc.size = sizeof(MyUniforms); // uniform buffer的size必须是16 bytes的倍数（这是硬件行为要求的，虽然当前例子只使用一个f32的uniform，会导致余留出空着的多个f32）
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
