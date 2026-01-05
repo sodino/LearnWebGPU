@@ -196,11 +196,13 @@ void Application::InitializeBuffers() {
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 
     // 创建Uniform buffer
-    bufferDesc.size = 4 * sizeof(float); // uniform buffer的size必须是16 bytes的倍数（虽然当前例子只使用一个f32的uniform，会导致余留出空着的3个f32）
+    bufferDesc.size = sizeof(MyUniforms); // uniform buffer的size必须是16 bytes的倍数（虽然当前例子只使用一个f32的uniform，会导致余留出空着的3个f32）
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
-    float currentTime = 1.0f; // 先写入一个默认值吧...
-    queue.writeBuffer(bufUniform, 0, &currentTime, sizeof(float));
+    MyUniforms my; // 先写入一个默认值吧...
+    my.x = 0.0f;
+    my.y = 0.0f;
+    queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
 }
 
 
