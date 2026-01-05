@@ -28,14 +28,19 @@ struct VertexOutput {
     @location(0) color : vec3f,
 };
 
+struct MyUniforms {
+    color : vec4f,  // color 排在最前：1. vec4f的offset必须是16 byte倍数，这里最前就是0了。2. 基于1，wgsl推荐按结构体本身的size，越大排越前面。
+    offsetX : f32,
+    offsetY : f32,
+};
 @group(0) @binding(0)
-var<uniform> uTime : f32;
+var<uniform> data : MyUniforms;
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
     var centre = vec2f(0.0, 0.0);
     // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
-    var point = centre + 0.3 * vec2f(cos(uTime), sin(uTime));
+    var point = centre + 0.3 * vec2f(data.offsetX, data.offsetY);
 
     let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
@@ -46,7 +51,10 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in : VertexOutput) -> @location(0) vec4f {
-    return vec4f(in.color, 1.0);
+    let color = in.color * data.color.rgb;
+    let linear_color = pow(color, vec3f(2.2));
+
+    return vec4f(linear_color, 1.0);
 }
 )";
 
@@ -73,6 +81,16 @@ private:
     wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
     void InitializeBuffers();
     void InitializeBindGroups();
+
+
+private:
+    struct MyUniforms {
+        std::array<float, 4> color;
+        float x;
+        float y;
+        float _[2];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
+    };
+    static_assert(sizeof(MyUniforms) % 16 == 0); // 目前最大是 float/4bytes，就必须是4byte对齐
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -140,7 +158,7 @@ void Application::InitializeBindGroups() {
     entry.binding = 0; // 对应 @binding(0)，这里不再是解释，而是直接赋值 bufUniform 的作用。
     entry.buffer = bufUniform;
     entry.offset = 0;
-    entry.size = 4 * sizeof(float);
+    entry.size = sizeof(MyUniforms);
 
     wgpu::BindGroupDescriptor descBindGroup{};
     descBindGroup.layout = layoutBindGroup;
@@ -183,11 +201,14 @@ void Application::InitializeBuffers() {
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 
     // 创建Uniform buffer
-    bufferDesc.size = 4 * sizeof(float); // uniform buffer的size必须是16 bytes的倍数（虽然当前例子只使用一个f32的uniform，会导致余留出空着的3个f32）
+    bufferDesc.size = sizeof(MyUniforms); // uniform buffer的size必须是16 bytes的倍数（这是硬件行为要求的，虽然当前例子只使用一个f32的uniform，会导致余留出空着的多个f32）
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
-    float currentTime = 1.0f; // 先写入一个默认值吧...
-    queue.writeBuffer(bufUniform, 0, &currentTime, sizeof(float));
+    MyUniforms my; // 先写入一个默认值吧...
+    my.color = {0.0, 0.0, 0.0, 1.0};
+    my.x = 0.0f;
+    my.y = 0.0f;
+    queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
 }
 
 
@@ -279,9 +300,9 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     // 创建 BindGroupLayoutEntry 
     wgpu::BindGroupLayoutEntry groupEntry = wgpu::Default;
     groupEntry.binding = 0; // 对应wgsl中的 @binding(0)，这里最终是解释 layout 的作用
-    groupEntry.visibility = wgpu::ShaderStage::Vertex; // 在顶点着色器阶段能访问这个资源
+    groupEntry.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment; // 在顶点着色器阶段能访问这个资源
     groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
-    groupEntry.buffer.minBindingSize = 4 * sizeof(float); // buffer 最小对齐要求：16 byte的倍数
+    groupEntry.buffer.minBindingSize = sizeof(MyUniforms); // 真实的MyUniforms这个struct的size，已经符合：buffer 最小对齐要求：16 byte的倍数
 
     // 创建 BindGroupLayout ，并带上上述的BindGroupLayoutEntry
     wgpu::BindGroupLayoutDescriptor descGroupLayout{};
@@ -578,9 +599,26 @@ void Application::MainLoop() {
 	wgpu::TextureView targetView = GetNextSurfaceTextureView();
 	if (!targetView) return;
 
+    std::array<float, 4> tmp = {0.0f, 0.0f, 0.0f, 1.0f};
+    {
+        static int count = 0;
+        count ++;
+        int mod = (count / 100) % 3;
+        tmp[mod] = 1.0f;
+        std::cout <<"TestDemo count=" << count << " 0=" << tmp[0] << " 1=" << tmp[1] << " 2="<< tmp[2] << " 3=" << tmp[3] << std::endl;
+    }
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
-    queue.writeBuffer(bufUniform, 0, &t, sizeof(float));
+    MyUniforms my;
+    my.color = tmp;
+    my.x = cosf(t);
+    my.y = sinf(t);
+    queue.writeBuffer(bufUniform, offsetof(MyUniforms, color), &my.color, 4 * sizeof(float));
+    // queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
+    // 故意分成两次write，虽然也可以，但这违背了uniform的设计思想：uniform 不是“字段级更新”，而是“16 字节块级一致性模型”，存在数据不同步的风险。
+    std::cout << "TestDemo : offset x=" << offsetof(MyUniforms, x) << " y="<< offsetof(MyUniforms, y) << std::endl;
+    queue.writeBuffer(bufUniform, offsetof(MyUniforms, x), &my.x, sizeof(float));
+    queue.writeBuffer(bufUniform, offsetof(MyUniforms, y), &my.y, sizeof(float));
 
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
