@@ -85,6 +85,7 @@ private:
 
 private:
     struct MyUniforms {
+        std::array<float, 4> color;
         float x;
         float y;
         float _[2];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
@@ -204,6 +205,7 @@ void Application::InitializeBuffers() {
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
+    my.color = {0.0, 0.0, 0.0, 1.0};
     my.x = 0.0f;
     my.y = 0.0f;
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
