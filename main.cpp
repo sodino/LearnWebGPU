@@ -29,17 +29,18 @@ struct VertexOutput {
 };
 
 struct MyUniforms {
-    x : f32,
-    y : f32,
+    color : vec4f,  // color 排在最前：1. vec4f的offset必须是16 byte倍数，这里最前就是0了。2. 基于1，wgsl推荐按结构体本身的size，越大排越前面。
+    offsetX : f32,
+    offsetY : f32,
 };
 @group(0) @binding(0)
-var<uniform> offset : MyUniforms;
+var<uniform> data : MyUniforms;
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
     var centre = vec2f(0.0, 0.0);
     // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
-    var point = centre + 0.3 * vec2f(offset.x, offset.y);
+    var point = centre + 0.3 * vec2f(data.offsetX, data.offsetY);
 
     let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
@@ -50,7 +51,10 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in : VertexOutput) -> @location(0) vec4f {
-    return vec4f(in.color, 1.0);
+    let color = in.color * data.color.rgb;
+    let linear_color = pow(color, vec3f(2.2));
+
+    return vec4f(linear_color, 1.0);
 }
 )";
 
