@@ -599,11 +599,21 @@ void Application::MainLoop() {
 	wgpu::TextureView targetView = GetNextSurfaceTextureView();
 	if (!targetView) return;
 
+    std::array<float, 4> tmp = {0.0f, 0.0f, 0.0f, 1.0f};
+    {
+        static int count = 0;
+        count ++;
+        int mod = (count / 100) % 3;
+        tmp[mod] = 1.0f;
+        std::cout <<"TestDemo count=" << count << " 0=" << tmp[0] << " 1=" << tmp[1] << " 2="<< tmp[2] << " 3=" << tmp[3] << std::endl;
+    }
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
     MyUniforms my;
+    my.color = tmp;
     my.x = cosf(t);
     my.y = sinf(t);
+    queue.writeBuffer(bufUniform, offsetof(MyUniforms, color), &my.color, 4 * sizeof(float));
     // queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
     // 故意分成两次write，虽然也可以，但这违背了uniform的设计思想：uniform 不是“字段级更新”，而是“16 字节块级一致性模型”，存在数据不同步的风险。
     std::cout << "TestDemo : offset x=" << offsetof(MyUniforms, x) << " y="<< offsetof(MyUniforms, y) << std::endl;
