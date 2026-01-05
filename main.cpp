@@ -77,6 +77,15 @@ private:
     wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
     void InitializeBuffers();
     void InitializeBindGroups();
+
+
+private:
+    struct MyUniforms {
+        float x;
+        float y;
+        float _[2]; // struct得凑齐 16 bytes，为uniform buffer 内存对齐..
+    };
+    static_assert(sizeof(MyUniforms) % 4 == 0); // 目前最大是 float/4bytes，就必须是4byte对齐
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
