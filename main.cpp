@@ -30,7 +30,6 @@ struct VertexOutput {
 };
 
 struct MyUniforms {
-    color : vec4f,  // color 排在最前：1. vec4f的offset必须是16 byte倍数，这里最前就是0了。2. 基于1，wgsl推荐按结构体本身的size，越大排越前面。
     offsetX : f32,
     offsetY : f32,
     ratio   : f32,  // 屏幕宽高比
@@ -52,10 +51,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in : VertexOutput) -> @location(0) vec4f {
-    let color = in.color * data.color.rgb;
-    let linear_color = pow(color, vec3f(2.2));
-
-    return vec4f(linear_color, 1.0);
+    return vec4f(in.color, 1.0);
 }
 )";
 
@@ -86,7 +82,6 @@ private:
 
 private:
     struct MyUniforms {
-        std::array<float, 4> color;
         float x;
         float y;
         float ratio = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;    // 屏幕宽高比。宽高是固定的，ratio就只在初始值有配置，后续都赋值不变更了。
@@ -217,7 +212,6 @@ void Application::InitializeBuffers() {
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
-    my.color = {0.0, 0.0, 0.0, 1.0};
     my.x = 0.0f;
     my.y = 0.0f;
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
@@ -622,7 +616,6 @@ void Application::MainLoop() {
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
     MyUniforms my;
-    my.color = tmp;
     my.x = cosf(t);
     my.y = sinf(t);
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
