@@ -209,6 +209,7 @@ void Application::InitializeBuffers() {
     uint32_t unifromStride = ceilToNexMultiple(sizeof(MyUniforms), reqLimits.limits.minUniformBufferOffsetAlignment);
     // 当前要存储2份MyUniforms数据，第一份放 unifromStride的空间内（尾部存在空闲空间），第二份放sizeof(MyUniforms)空间内
     bufferDesc.size = unifromStride * (2 -1) + sizeof(MyUniforms);
+    std::cout << "TestDemo : unifromStride=" << unifromStride << " sizeof(MyUniforms)=" << sizeof(MyUniforms) << " bufferDesc.size=" << bufferDesc.size << std::endl;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
