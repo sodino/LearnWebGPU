@@ -148,6 +148,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
 
     // 为uniform 配置limits
+    requiredLimits.limits.maxDynamicUniformBuffersPerPipelineLayout = 1; // 要配置一个带 dynamic offset 的uniform buffer了。放松dynamicUniformBuffers限制。(这里是demo练习配置，不配置的话默认值是8）
     requiredLimits.limits.maxBindGroups = 1;
     requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
     requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
