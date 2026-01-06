@@ -19,7 +19,7 @@
 const char* shaderSource = R"(
 // 位置+颜色 的顶点属性结构，作为顶点着色器的输入参数
 struct VertexInput {
-    @location(0) position : vec2f,
+    @location(0) position : vec3f,
     @location(1) color : vec3f,
 };
 
@@ -248,7 +248,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     wgpu::VertexAttribute positionAttrib;
     positionAttrib.shaderLocation = 0; // @location(0)
-    positionAttrib.format = wgpu::VertexFormat::Float32x2;
+    positionAttrib.format = wgpu::VertexFormat::Float32x3;
     positionAttrib.offset = 0;
     vertexAttribs.push_back(positionAttrib);
 
