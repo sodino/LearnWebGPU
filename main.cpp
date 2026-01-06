@@ -306,6 +306,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     groupEntry.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment; // 在顶点着色器阶段能访问这个资源
     groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
     groupEntry.buffer.minBindingSize = sizeof(MyUniforms); // 真实的MyUniforms这个struct的size，已经符合：buffer 最小对齐要求：16 byte的倍数
+    groupEntry.buffer.hasDynamicOffset = true; // 配置当前buffer具有dynamic，以便在绘制操作时可以在调用RenderPassEncoder.setBindGroup时操作offset来读取不同数据
 
     // 创建 BindGroupLayout ，并带上上述的BindGroupLayoutEntry
     wgpu::BindGroupLayoutDescriptor descGroupLayout{};
