@@ -4,6 +4,17 @@
 #include <vector>
 #include <cassert>
 
+// 返回dynamic uniform buffer的中前面（n -1）个dynamic uniform的每个uniform的存储空间大小。第n个uniform为strcutSize本身。
+// @param structSize : C++层的struct的空间大小
+// @param limitMinUniformBufferOffset : 当前device所要求的最小uniform buffer 偏移字节数
+uint32_t ceilToNexMultiple(uint32_t structSize, uint32_t limitMinUniformBufferOffset) {
+    // structSize是否为 limitMinUniformBufferOffset 的整数倍？
+    // 是：返回 structSize原值（即 count * limitMinUniformBufferOffset)
+    // 否：返回 [(整数倍 + 1) * limitMinUniformBufferOffset]
+    // 向上(ceil)取 limitMinUniformBufferOffset 的整数倍
+    uint32_t ceilCount = structSize / limitMinUniformBufferOffset + (structSize % limitMinUniformBufferOffset == 0 ? 0 : 1);
+	return ceilCount * limitMinUniformBufferOffset;
+}
 
 void inspectAdapter(wgpu::Adapter adapter) {
     wgpu::SupportedLimits supportedLimits = {};

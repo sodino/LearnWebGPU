@@ -55,7 +55,7 @@ fn fs_main(in : VertexOutput) -> @location(0) vec4f {
     let color = in.color * data.color.rgb;
     let linear_color = pow(color, vec3f(2.2));
 
-    return vec4f(linear_color, 1.0);
+    return vec4f(linear_color, data.color.a);
 }
 )";
 
@@ -85,6 +85,7 @@ private:
 
 
 private:
+    wgpu::RequiredLimits reqLimits;
     struct MyUniforms {
         std::array<float, 4> color;
         float x;
@@ -140,7 +141,8 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     wgpu::RequiredLimits requiredLimits = wgpu::Default;
     requiredLimits.limits.maxVertexAttributes = 2;   // position + color : 要两种vertex attribute了
     requiredLimits.limits.maxVertexBuffers = 1;      //  6组{顶点 + color}直接填入一个VertexBuffer，仍然填1
-    requiredLimits.limits.maxBufferSize = 6 * 5 * sizeof(float); // 6个顶点，每个顶点一对(x,y) + rgb共5个值，每个值都是float
+    // 使用了dynamic uniform，存储两份数据。该uniform buffer的空间大小为 minUniformBufferOffset + sizeof(MyUniforms)
+    requiredLimits.limits.maxBufferSize = supportedLimits.limits.minUniformBufferOffsetAlignment * 1 + sizeof(MyUniforms); // 6个顶点，每个顶点一对(x,y) + rgb共5个值，每个值都是float
     requiredLimits.limits.maxVertexBufferArrayStride = 5 * sizeof(float); // 步长为2:每个顶点需5个float，即一组(x,y) + 一组rgb
 
     requiredLimits.limits.maxInterStageShaderComponents = 3; // 从顶点着色器转发到片段着色器的数据最多为3个float，即rgb。
@@ -148,6 +150,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
 
     // 为uniform 配置limits
+    requiredLimits.limits.maxDynamicUniformBuffersPerPipelineLayout = 1; // 要配置一个带 dynamic offset 的uniform buffer了。放松dynamicUniformBuffers限制。(这里是demo练习配置，不配置的话默认值是8）
     requiredLimits.limits.maxBindGroups = 1;
     requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
     requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
@@ -203,7 +206,10 @@ void Application::InitializeBuffers() {
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 
     // 创建Uniform buffer
-    bufferDesc.size = sizeof(MyUniforms); // uniform buffer的size必须是16 bytes的倍数（这是硬件行为要求的，虽然当前例子只使用一个f32的uniform，会导致余留出空着的多个f32）
+    uint32_t unifromStride = ceilToNexMultiple(sizeof(MyUniforms), reqLimits.limits.minUniformBufferOffsetAlignment);
+    // 当前要存储2份MyUniforms数据，第一份放 unifromStride的空间内（尾部存在空闲空间），第二份放sizeof(MyUniforms)空间内
+    bufferDesc.size = unifromStride * (2 -1) + sizeof(MyUniforms);
+    std::cout << "TestDemo : unifromStride=" << unifromStride << " sizeof(MyUniforms)=" << sizeof(MyUniforms) << " bufferDesc.size=" << bufferDesc.size << std::endl;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
@@ -305,6 +311,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     groupEntry.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment; // 在顶点着色器阶段能访问这个资源
     groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
     groupEntry.buffer.minBindingSize = sizeof(MyUniforms); // 真实的MyUniforms这个struct的size，已经符合：buffer 最小对齐要求：16 byte的倍数
+    groupEntry.buffer.hasDynamicOffset = true; // 配置当前buffer具有dynamic，以便在绘制操作时可以在调用RenderPassEncoder.setBindGroup时操作offset来读取不同数据
 
     // 创建 BindGroupLayout ，并带上上述的BindGroupLayoutEntry
     wgpu::BindGroupLayoutDescriptor descGroupLayout{};
@@ -416,8 +423,8 @@ bool Application::Initialize() {
     deviceDesc.deviceLostCallback = [](WGPUDeviceLostReason reason, char const * message, void * ) {
         std::cout << "WebGPU Device lost! Reason: " << reason << ", message: " << message << std::endl;
     };
-    wgpu::RequiredLimits requiredLimits = GetRequiredLimits(adapter);
-    deviceDesc.requiredLimits = &requiredLimits;
+    reqLimits = GetRequiredLimits(adapter);
+    deviceDesc.requiredLimits = &reqLimits;
     
     device = adapter.requestDevice(deviceDesc);       // wgpuDeviceRelease
     if (device == nullptr) {
@@ -611,17 +618,17 @@ void Application::MainLoop() {
     }
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
+    uint32_t uniformStride = ceilToNexMultiple(sizeof(MyUniforms), reqLimits.limits.minUniformBufferOffsetAlignment);
     MyUniforms my;
     my.color = tmp;
     my.x = cosf(t);
     my.y = sinf(t);
-    queue.writeBuffer(bufUniform, offsetof(MyUniforms, color), &my.color, 4 * sizeof(float));
-    // queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
-    // 故意分成两次write，虽然也可以，但这违背了uniform的设计思想：uniform 不是“字段级更新”，而是“16 字节块级一致性模型”，存在数据不同步的风险。
-    std::cout << "TestDemo : offset x=" << offsetof(MyUniforms, x) << " y="<< offsetof(MyUniforms, y) << std::endl;
-    queue.writeBuffer(bufUniform, offsetof(MyUniforms, x), &my.x, sizeof(float));
-    queue.writeBuffer(bufUniform, offsetof(MyUniforms, y), &my.y, sizeof(float));
-
+    queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
+    
+    my.color = {0.0f, 0.0f, 0.0f, 0.88f};   // 保持不动的黑色正方形，变透明。
+    my.x = my.y = 0;
+    queue.writeBuffer(bufUniform, uniformStride, &my, sizeof(MyUniforms));
+    
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
 	wgpu::CommandEncoderDescriptor encoderDesc = {};
@@ -663,8 +670,14 @@ void Application::MainLoop() {
     renderPass.setPipeline(pipeline);
     renderPass.setVertexBuffer(0, bufPoint, 0, bufPoint.getSize());
     renderPass.setIndexBuffer(bufIndex, wgpu::IndexFormat::Uint16, 0, bufIndex.getSize());
-    renderPass.setBindGroup(0, bindGroup, 0, nullptr); // unfirom buffer 与 bind Group绑定&更新
-    // renderPass.draw(indexCount, 1, 0, 0);
+
+    int idx = 0;
+    uint32_t dynamicOffset = idx * uniformStride;
+    renderPass.setBindGroup(0, bindGroup, 1, &dynamicOffset); // 绘制第一个动画的正方形
+    renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
+    idx ++;
+    dynamicOffset = idx * uniformStride;
+    renderPass.setBindGroup(0, bindGroup, 1, &dynamicOffset); // 绘制第二个不动的黑色半透明正方形，会叠加在第一个正方形上面。
     renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
 
 	renderPass.end();
