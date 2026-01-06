@@ -141,7 +141,8 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     wgpu::RequiredLimits requiredLimits = wgpu::Default;
     requiredLimits.limits.maxVertexAttributes = 2;   // position + color : 要两种vertex attribute了
     requiredLimits.limits.maxVertexBuffers = 1;      //  6组{顶点 + color}直接填入一个VertexBuffer，仍然填1
-    requiredLimits.limits.maxBufferSize = 6 * 5 * sizeof(float); // 6个顶点，每个顶点一对(x,y) + rgb共5个值，每个值都是float
+    // 使用了dynamic uniform，存储两份数据。该uniform buffer的空间大小为 minUniformBufferOffset + sizeof(MyUniforms)
+    requiredLimits.limits.maxBufferSize = supportedLimits.limits.minUniformBufferOffsetAlignment * 1 + sizeof(MyUniforms); // 6个顶点，每个顶点一对(x,y) + rgb共5个值，每个值都是float
     requiredLimits.limits.maxVertexBufferArrayStride = 5 * sizeof(float); // 步长为2:每个顶点需5个float，即一组(x,y) + 一组rgb
 
     requiredLimits.limits.maxInterStageShaderComponents = 3; // 从顶点着色器转发到片段着色器的数据最多为3个float，即rgb。
