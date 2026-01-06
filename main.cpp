@@ -13,7 +13,8 @@
 #include <cassert>
 
 
-
+#define WINDOW_WIDTH  800
+#define WINDOW_HEIGHT 600
 
 const char* shaderSource = R"(
 // 位置+颜色 的顶点属性结构，作为顶点着色器的输入参数
@@ -32,6 +33,7 @@ struct MyUniforms {
     color : vec4f,  // color 排在最前：1. vec4f的offset必须是16 byte倍数，这里最前就是0了。2. 基于1，wgsl推荐按结构体本身的size，越大排越前面。
     offsetX : f32,
     offsetY : f32,
+    ratio   : f32,  // 屏幕宽高比
 };
 @group(0) @binding(0)
 var<uniform> data : MyUniforms;
@@ -42,9 +44,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
     var point = centre + 0.3 * vec2f(data.offsetX, data.offsetY);
 
-    let ratio = 640.0 / 480.0;  // 先固定写死当前窗口的宽高比，让正方形显示为正。
     var out : VertexOutput; // 输入和输出都使用自定义结构
-    out.position = vec4f(in.position.x + point.x, (in.position.y + point.y) * ratio, 0.0, 1.0);
+    out.position = vec4f(in.position.x + point.x, (in.position.y + point.y) * data.ratio, 0.0, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
@@ -88,7 +89,8 @@ private:
         std::array<float, 4> color;
         float x;
         float y;
-        float _[2];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
+        float ratio = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;    // 屏幕宽高比。宽高是固定的，ratio就只在初始值有配置，后续都赋值不变更了。
+        float _[1];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
     };
     static_assert(sizeof(MyUniforms) % 16 == 0); // 目前最大是 float/4bytes，就必须是4byte对齐
 private:
@@ -439,8 +441,8 @@ bool Application::Initialize() {
     wgpu::SurfaceConfiguration cfgSurface = {};
     cfgSurface.nextInChain = nullptr;
     cfgSurface.device = device;
-    cfgSurface.width = 800;
-    cfgSurface.height = 600;
+    cfgSurface.width = WINDOW_WIDTH;
+    cfgSurface.height = WINDOW_HEIGHT;
     // cfgSurface.usage = WGPUTextureUsage_RenderAttachment;
     cfgSurface.usage = wgpu::TextureUsage::RenderAttachment;
     // WGPUTextureFormat textureFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
