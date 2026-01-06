@@ -670,8 +670,14 @@ void Application::MainLoop() {
     renderPass.setPipeline(pipeline);
     renderPass.setVertexBuffer(0, bufPoint, 0, bufPoint.getSize());
     renderPass.setIndexBuffer(bufIndex, wgpu::IndexFormat::Uint16, 0, bufIndex.getSize());
-    renderPass.setBindGroup(0, bindGroup, 0, nullptr); // unfirom buffer 与 bind Group绑定&更新
-    // renderPass.draw(indexCount, 1, 0, 0);
+
+    int idx = 0;
+    uint32_t dynamicOffset = idx * uniformStride;
+    renderPass.setBindGroup(0, bindGroup, 1, &dynamicOffset); // 绘制第一个动画的正方形
+    renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
+    idx ++;
+    dynamicOffset = idx * uniformStride;
+    renderPass.setBindGroup(0, bindGroup, 1, &dynamicOffset);
     renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
 
 	renderPass.end();
