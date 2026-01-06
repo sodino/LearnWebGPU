@@ -616,17 +616,17 @@ void Application::MainLoop() {
     }
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
+    uint32_t uniformStride = ceilToNexMultiple(sizeof(MyUniforms), reqLimits.limits.minUniformBufferOffsetAlignment);
     MyUniforms my;
     my.color = tmp;
     my.x = cosf(t);
     my.y = sinf(t);
-    queue.writeBuffer(bufUniform, offsetof(MyUniforms, color), &my.color, 4 * sizeof(float));
-    // queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
-    // 故意分成两次write，虽然也可以，但这违背了uniform的设计思想：uniform 不是“字段级更新”，而是“16 字节块级一致性模型”，存在数据不同步的风险。
-    std::cout << "TestDemo : offset x=" << offsetof(MyUniforms, x) << " y="<< offsetof(MyUniforms, y) << std::endl;
-    queue.writeBuffer(bufUniform, offsetof(MyUniforms, x), &my.x, sizeof(float));
-    queue.writeBuffer(bufUniform, offsetof(MyUniforms, y), &my.y, sizeof(float));
-
+    queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
+    
+    my.color = {0.0f, 0.0f, 0.0f, 1.0f};
+    my.x = my.y = 0;
+    queue.writeBuffer(bufUniform, uniformStride, &my, sizeof(MyUniforms));
+    
 	// Create a command encoder for the draw call
 	// WGPUCommandEncoderDescriptor encoderDesc = {};
 	wgpu::CommandEncoderDescriptor encoderDesc = {};
