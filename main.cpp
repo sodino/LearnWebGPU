@@ -55,7 +55,7 @@ fn fs_main(in : VertexOutput) -> @location(0) vec4f {
     let color = in.color * data.color.rgb;
     let linear_color = pow(color, vec3f(2.2));
 
-    return vec4f(linear_color, 1.0);
+    return vec4f(linear_color, data.color.a);
 }
 )";
 
@@ -625,7 +625,7 @@ void Application::MainLoop() {
     my.y = sinf(t);
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
     
-    my.color = {0.0f, 0.0f, 0.0f, 1.0f};
+    my.color = {0.0f, 0.0f, 0.0f, 0.88f};   // 保持不动的黑色正方形，变透明。
     my.x = my.y = 0;
     queue.writeBuffer(bufUniform, uniformStride, &my, sizeof(MyUniforms));
     
@@ -677,7 +677,7 @@ void Application::MainLoop() {
     renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
     idx ++;
     dynamicOffset = idx * uniformStride;
-    renderPass.setBindGroup(0, bindGroup, 1, &dynamicOffset);
+    renderPass.setBindGroup(0, bindGroup, 1, &dynamicOffset); // 绘制第二个不动的黑色半透明正方形，会叠加在第一个正方形上面。
     renderPass.drawIndexed(indexCount, 1, 0, 0, 0);
 
 	renderPass.end();
