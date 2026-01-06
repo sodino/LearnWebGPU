@@ -30,8 +30,8 @@ struct VertexOutput {
 };
 
 struct MyUniforms {
-    offsetX : f32,
-    offsetY : f32,
+    v_cos   : f32,
+    v_sin   : f32,
     ratio   : f32,  // 屏幕宽高比
 };
 @group(0) @binding(0)
@@ -39,12 +39,21 @@ var<uniform> data : MyUniforms;
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
-    var centre = vec2f(0.0, 0.0);
-    // 为(0, 0)为圆心，半径为 0.3 的圆 上面的点
-    var point = centre + 0.3 * vec2f(data.offsetX, data.offsetY);
-
     var out : VertexOutput; // 输入和输出都使用自定义结构
-    out.position = vec4f(in.position.x + point.x, (in.position.y + point.y) * data.ratio, 0.0, 1.0);
+	
+	let alpha = data.v_cos;
+	let beta = data.v_sin;
+    // 不需要 depth buffer，不需要矩阵，不需要摄像机 : 完整但“极简”的 3D → 2D 算法 
+    // 3D物体 在 X 轴上做旋转，然后 把 3D 结果“投影”成屏幕上的 2D 点
+    // 在 极坐标里配合三角函数和角公式展开，即可推导出下列公式。
+    var position = vec3f(
+		in.position.x,                                      // x 不变
+		alpha * in.position.y + beta * in.position.z,       // y′ = y*sinθ + z*cosθ
+		alpha * in.position.z - beta * in.position.y,       // z′​ = y*cosθ - z*sinθ
+	);
+    // 由于最终显示仍然是2D，所以不需要z的参与。z 只参与“运动”的计算，不参与“显示位置”。
+	out.position = vec4f(position.x, position.y * data.ratio, 0.0, 1.0);
+
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
@@ -82,8 +91,8 @@ private:
 
 private:
     struct MyUniforms {
-        float x;
-        float y;
+        float v_cos;
+        float v_sin;
         float ratio = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;    // 屏幕宽高比。宽高是固定的，ratio就只在初始值有配置，后续都赋值不变更了。
         float _[1];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
     };
@@ -212,8 +221,8 @@ void Application::InitializeBuffers() {
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
-    my.x = 0.0f;
-    my.y = 0.0f;
+    my.v_cos = 0.0f;
+    my.v_sin = 0.0f;
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
 }
 
@@ -616,8 +625,8 @@ void Application::MainLoop() {
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
     MyUniforms my;
-    my.x = cosf(t);
-    my.y = sinf(t);
+    my.v_cos = cosf(t);
+    my.v_sin = sinf(t);
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
 
 	// Create a command encoder for the draw call
