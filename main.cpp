@@ -85,6 +85,7 @@ private:
 
 
 private:
+    wgpu::RequiredLimits reqLimits;
     struct MyUniforms {
         std::array<float, 4> color;
         float x;
@@ -204,7 +205,9 @@ void Application::InitializeBuffers() {
     queue.writeBuffer(bufIndex, 0, indexData.data(), bufferDesc.size);
 
     // 创建Uniform buffer
-    bufferDesc.size = sizeof(MyUniforms); // uniform buffer的size必须是16 bytes的倍数（这是硬件行为要求的，虽然当前例子只使用一个f32的uniform，会导致余留出空着的多个f32）
+    uint32_t unifromStride = ceilToNexMultiple(sizeof(MyUniforms), reqLimits.limits.minUniformBufferOffsetAlignment);
+    // 当前要存储2份MyUniforms数据，第一份放 unifromStride的空间内（尾部存在空闲空间），第二份放sizeof(MyUniforms)空间内
+    bufferDesc.size = unifromStride * (2 -1) + sizeof(MyUniforms);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
@@ -418,8 +421,8 @@ bool Application::Initialize() {
     deviceDesc.deviceLostCallback = [](WGPUDeviceLostReason reason, char const * message, void * ) {
         std::cout << "WebGPU Device lost! Reason: " << reason << ", message: " << message << std::endl;
     };
-    wgpu::RequiredLimits requiredLimits = GetRequiredLimits(adapter);
-    deviceDesc.requiredLimits = &requiredLimits;
+    reqLimits = GetRequiredLimits(adapter);
+    deviceDesc.requiredLimits = &reqLimits;
     
     device = adapter.requestDevice(deviceDesc);       // wgpuDeviceRelease
     if (device == nullptr) {
