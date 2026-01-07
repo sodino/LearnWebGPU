@@ -345,7 +345,16 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     fragmentState.targets = &colorState;
     pipelineDesc.fragment = &fragmentState;
 
-    pipelineDesc.depthStencil = nullptr;
+    // 配置深度测试相关
+    // Z-Buffer algorithm : 深度测试算法，是GPU自带硬件/固定功能硬件管线实现的，不是涉及着色器脚本。
+    // 所以在pipeline配置中，只需也只能配置以下3个参数即可启用。
+    wgpu::DepthStencilState depthState = wgpu::Default;
+    // depthWriteEnabled & depthCompare 必须同时配置，才算启用深度测试。
+    depthState.depthWriteEnabled = true; // 允许深度缓冲写入深度值
+    depthState.depthCompare = wgpu::CompareFunction::Less;  // 越接近Camera，才绘制。因为depth buffer 是 0~1 的值，越小越接近Camera。
+    depthState.format = wgpu::TextureFormat::Depth24Plus;
+    pipelineDesc.depthStencil = &depthState;
+
     pipelineDesc.multisample.count = 1;
     pipelineDesc.multisample.mask = ~0u;
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
