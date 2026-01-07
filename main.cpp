@@ -51,8 +51,10 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 		alpha * in.position.y + beta * in.position.z,       // y′ = y*sinθ + z*cosθ
 		alpha * in.position.z - beta * in.position.y,       // z′ = z*cosθ - y*sinθ
 	);
-    // 由于最终显示仍然是2D，所以不需要z的参与。z 只参与“运动”的计算，不参与“显示位置”。
-	out.position = vec4f(position.x, position.y * data.ratio, 0.0, 1.0);
+    // 已经启用了深度测试，所以这里要设置正确的 z 值
+	out.position = vec4f(position.x, position.y * data.ratio, 
+                        position.z * 0.5 + 0.5,                 // WebGPU的深度值范围是 0~1，所以需要将 z 值从[-1,1] 映射到 [0, 1] 的范围。
+                        1.0);
 
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
