@@ -141,8 +141,40 @@ Application::Application() { }
 Application::~Application() { }
 
 void Application::InitializeDepthTexture() {
+    // Texture : 本质上是显存，创建时约定了“内存 + 存储规则”。在当前示例中，这块GPU 内存在这里解读为“这块 2D 表格” : data[x][y] = depthValue 的形式存储深度信息。
+    // TextureView : 如何“解读/使用”这块显存的“视角/方式”。
+    // GPU 永远不直接用 Texture，只通过 TextureView 来用。因为 现代GPU的核心设计思想中有：同一块内存，可能要被“多种方式使用”。
 
+    wgpu::TextureDescriptor texDesc;
+    texDesc.label = "Depth texture";
+    // 深度纹理用于存储每个像素的深度值，所以设置为宽高与屏幕分辨率一致的 _2D纹理即可。
+    // （二维的索引，存储一个深度值 : data[x][y] = depthValue)。
+    // GPU 的所有光栅化都是 2D 的，每个fragment都天然对应一个屏幕上的像素位置(x,y)，用2D texture 方便零映射成本。
+    texDesc.dimension = wgpu::TextureDimension::_2D; 
+    texDesc.size = {WINDOW_WIDTH, WINDOW_HEIGHT, 1};    // 1 : 当前2D纹理只需要一个深度值。
+    texDesc.format = wgpu::TextureFormat::Depth24Plus;  // Plus : 至少24位精度的深度缓冲来做标准的Z-buffer尝试测试。具体使用哪个由当前设备硬件决定。
+    texDesc.usage = wgpu::TextureUsage::RenderAttachment;
+    texDesc.sampleCount = 1;
+    texDesc.mipLevelCount = 1;
+    texDepth = device.createTexture(texDesc);
+
+    // 创建深度纹理视图
+    wgpu::TextureViewDescriptor texViewDesc;
+    texViewDesc.label = "Depth texture view";
+    texViewDesc.dimension = wgpu::TextureViewDimension::_2D;
+    texViewDesc.aspect = wgpu::TextureAspect::DepthOnly;    // 本例中只需要深度值
+    // 上述texDesc中 depthOrArrayLayers 配置了这张texture一共有 1 层
+    texViewDesc.baseArrayLayer = 0;    // 所以当前textureView使用这共1层中的 第0层(只有1层)。
+    texViewDesc.arrayLayerCount = 1;   // 所以配置textureView以baseArrayLayer为起始的共1层，有且只有填 1。
+    // MipLevel 指的是纹理的 mipmap 层级。
+    // 一个纹理可以有多级分辨率，从原始大小（Level 0）到更小的缩小版（Level 1、Level 2……）。
+    texViewDesc.baseMipLevel = 0;      // 深度纹理视图是从 第 0 层 mipmap 开始的，也就是原始大小的那一层。
+    // 总共包含多少个mipmap层级，1 就表示只有原始大小level=0这一层。
+    texViewDesc.mipLevelCount = 1;     // 所以配置textureView以baseMipLevel为起始的共1层，有且只有填 1。
+    texViewDesc.format = wgpu::TextureFormat::Depth24Plus;
+    texViewDepth = texDepth.createView(texViewDesc);
 }
+
 wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const {
     wgpu::SupportedLimits supportedLimits;
     adapter.getLimits(&supportedLimits);
