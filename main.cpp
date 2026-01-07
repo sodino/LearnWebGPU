@@ -516,6 +516,7 @@ bool Application::Initialize() {
     InitializePipeline(textureFormat);
     InitializeBuffers();
     InitializeBindGroups();
+    InitializeDepthTexture();
     
     // PlayingWithBuffers();
     return true;
