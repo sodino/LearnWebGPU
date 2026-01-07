@@ -37,25 +37,77 @@ struct MyUniforms {
 @group(0) @binding(0)
 var<uniform> data : MyUniforms;
 
+const pi = 3.14159265359;
+
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out : VertexOutput; // 输入和输出都使用自定义结构
 	
-	let alpha = data.v_cos;
-	let beta = data.v_sin;
-    // 不需要 depth buffer，不需要矩阵，不需要摄像机 : 完整但“极简”的 3D → 2D 算法 
-    // 3D物体 在 X 轴上做旋转，然后 把 3D 结果“投影”成屏幕上的 2D 点
-    // 在 极坐标里配合三角函数和角公式展开，即可推导出下列公式。
-    var position = vec3f(
-		in.position.x,                                      // x 不变
-		alpha * in.position.y + beta * in.position.z,       // y′ = y*sinθ + z*cosθ
-		alpha * in.position.z - beta * in.position.y,       // z′ = z*cosθ - y*sinθ
-	);
-    // 已经启用了深度测试，所以这里要设置正确的 z 值
-	out.position = vec4f(position.x, position.y * data.ratio, 
-                        position.z * 0.5 + 0.5,                 // WebGPU的深度值范围是 0~1，所以需要将 z 值从[-1,1] 映射到 [0, 1] 的范围。
-                        1.0);
 
+	// Scale the object
+	let S = transpose(mat4x4f(
+		0.3,  0.0, 0.0, 0.0,
+		0.0,  0.3, 0.0, 0.0,
+		0.0,  0.0, 0.3, 0.0,
+		0.0,  0.0, 0.0, 1.0,
+	));
+
+	// Translate the object
+	let T = transpose(mat4x4f(
+		1.0,  0.0, 0.0, 0.5,
+		0.0,  1.0, 0.0, 0.0,
+		0.0,  0.0, 1.0, 0.0,
+		0.0,  0.0, 0.0, 1.0,
+	));
+
+
+	// Rotate the model in the XY plane
+	let c1 = data.v_cos;
+	let s1 = data.v_sin;
+	let R1 = transpose(mat4x4f(
+		 c1,  s1, 0.0, 0.0,
+		-s1,  c1, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0,  0.0, 0.0, 1.0,
+	));
+
+
+	// 金字塔在YZ平面/X轴，翻转3/8圈。
+    // 默认显示金字塔底座，金字截顶点在底座下面。如果翻转一半，则是俯视图。这里翻转3/8圈，则是从上往下看的斜视图。
+	let angle2 = 3.0 * pi / 4.0;
+	let c2 = cos(angle2);
+	let s2 = sin(angle2);
+	let R2 = transpose(mat4x4f(
+		1.0, 0.0, 0.0, 0.0,
+		0.0,  c2,  s2, 0.0,
+		0.0, -s2,  c2, 0.0,
+		0.0,  0.0, 0.0, 1.0,
+	));
+
+	// Compose and apply rotations
+	// (S then T then R1 then R2, remember this reads backwards)
+	let homogeneous_position = vec4f(in.position, 1.0);
+    // 效果的应用顺序是按下面算式的逆序: 先Scale,再Translate,再Rotate,最后投影。
+	let position = (R2 * R1 * T * S * homogeneous_position).xyz;
+
+    // 金字塔 1.缩小到原来的0.3；
+    //       2.在XY平面/Z轴，自旋。
+    // let position = (R1 * S * homogeneous_position).xyz;
+    // 金字塔 1.缩小到原来的0.3；
+    //       2.XY平面/Z轴，自旋；
+    //       3.向X轴正方向平移0.5。
+    // let position = (T * R1 * S * homogeneous_position).xyz;
+    // 金字塔 1.缩小到原来的0.3；
+    //       2.向X轴正方向平移0.5；
+    //       3.在XY平面/Z轴，自旋 + 整体在XY平面/Z轴，以第1步的0.5为半径绕圈圈。
+    // let position = (R1 * T * S * homogeneous_position).xyz;
+    // 金字塔 1.缩小到原来的0.3；
+    //       2.向X轴正方向平移0.5；
+    //       3.在XY平面/Z轴，自旋 + 整体在XY平面/Z轴，以第1步的0.5为半径绕圈圈。
+    //       4.整体视角:金字塔在YZ平面/X轴，倾斜3/8圈。
+    let position = (R2 * R1 * T * S * homogeneous_position).xyz;
+
+	out.position = vec4<f32>(position.x, position.y * data.ratio, position.z * 0.5 + 0.5, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
