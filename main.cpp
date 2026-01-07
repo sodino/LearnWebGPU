@@ -720,10 +720,11 @@ void Application::MainLoop() {
     attachDepth.depthLoadOp = wgpu::LoadOp::Clear;  // 渲染开始时，清空深度缓冲，使用depthClearValue进行填充。
     attachDepth.depthClearValue = 1.0f;             // 深度缓冲的初始值，这里设置为1.0f，表示最远距离。
     attachDepth.depthStoreOp = wgpu::StoreOp::Store; // 渲染结束时，将深度缓冲写入到深度纹理中。
-    
+    attachDepth.depthReadOnly = false;
     attachDepth.stencilLoadOp = wgpu::LoadOp::Undefined;
     attachDepth.stencilStoreOp = wgpu::StoreOp::Undefined;
-    // attachDepth.stencilClearValue = 0;
+    attachDepth.stencilClearValue = 0.0f;
+    attachDepth.stencilReadOnly = true;
 	renderPassDesc.depthStencilAttachment = &attachDepth;
 	renderPassDesc.timestampWrites = nullptr;
 
