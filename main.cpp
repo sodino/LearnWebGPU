@@ -713,7 +713,18 @@ void Application::MainLoop() {
 
 	renderPassDesc.colorAttachmentCount = 1;
 	renderPassDesc.colorAttachments = &colorAttachment;
-	renderPassDesc.depthStencilAttachment = nullptr;
+
+    // 配置深度缓冲附件 : 让渲染通道/renderPass在textureView上操作深度值。
+    wgpu::RenderPassDepthStencilAttachment attachDepth = wgpu::Default;
+    attachDepth.view = texViewDepth;                // 这次渲染要用这个深度缓冲进行深度测试和写入
+    attachDepth.depthLoadOp = wgpu::LoadOp::Clear;  // 渲染开始时，清空深度缓冲，使用depthClearValue进行填充。
+    attachDepth.depthClearValue = 1.0f;             // 深度缓冲的初始值，这里设置为1.0f，表示最远距离。
+    attachDepth.depthStoreOp = wgpu::StoreOp::Store; // 渲染结束时，将深度缓冲写入到深度纹理中。
+    
+    attachDepth.stencilLoadOp = wgpu::LoadOp::Undefined;
+    attachDepth.stencilStoreOp = wgpu::StoreOp::Undefined;
+    // attachDepth.stencilClearValue = 0;
+	renderPassDesc.depthStencilAttachment = &attachDepth;
 	renderPassDesc.timestampWrites = nullptr;
 
 	// Create the render pass and end it immediately (we only clear the screen but do not draw anything)
