@@ -88,24 +88,11 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 	// (S then T then R1 then R2, remember this reads backwards)
 	let homogeneous_position = vec4f(in.position, 1.0);
     // 效果的应用顺序是按下面算式的逆序: 先Scale,再Translate,再Rotate,最后投影。
-	let position = (R2 * R1 * T * S * homogeneous_position).xyz;
+	// let position = (R2 * R1 * T * S * homogeneous_position).xyz;
 
     // 金字塔 1.缩小到原来的0.3；
-    //       2.在XY平面/Z轴，自旋。
-    // let position = (R1 * S * homogeneous_position).xyz;
-    // 金字塔 1.缩小到原来的0.3；
-    //       2.XY平面/Z轴，自旋；
-    //       3.向X轴正方向平移0.5。
-    // let position = (T * R1 * S * homogeneous_position).xyz;
-    // 金字塔 1.缩小到原来的0.3；
-    //       2.向X轴正方向平移0.5；
-    //       3.在XY平面/Z轴，自旋 + 整体在XY平面/Z轴，以第1步的0.5为半径绕圈圈。
-    // let position = (R1 * T * S * homogeneous_position).xyz;
-    // 金字塔 1.缩小到原来的0.3；
-    //       2.向X轴正方向平移0.5；
-    //       3.在XY平面/Z轴，自旋 + 整体在XY平面/Z轴，以第1步的0.5为半径绕圈圈。
-    //       4.整体视角:金字塔在YZ平面/X轴，倾斜3/8圈。
-    let position = (R2 * R1 * T * S * homogeneous_position).xyz;
+    //       2.在XY平面/Z轴，自旋。（只看到金字塔的底座，看不到金字塔的顶点:仰视视角）
+    let position = (R1 * S * homogeneous_position).xyz;
 
 	out.position = vec4<f32>(position.x, position.y * data.ratio, position.z * 0.5 + 0.5, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
