@@ -87,7 +87,7 @@ private:
     wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter adapter) const;
     void InitializeBuffers();
     void InitializeBindGroups();
-
+    void InitializeDepthTexture();
 
 private:
     struct MyUniforms {
@@ -115,6 +115,10 @@ private:
     wgpu::Buffer bufUniform;
     wgpu::BindGroupLayout layoutBindGroup;
     wgpu::PipelineLayout layoutPipeline;
+
+    // 深度缓冲相关
+    wgpu::Texture texDepth;
+    wgpu::TextureView texViewDepth;
 };
 
 int main() {
@@ -136,7 +140,9 @@ int main() {
 Application::Application() { }
 Application::~Application() { }
 
+void Application::InitializeDepthTexture() {
 
+}
 wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const {
     wgpu::SupportedLimits supportedLimits;
     adapter.getLimits(&supportedLimits);
@@ -575,6 +581,14 @@ void Application::Terminate() {
     if (bufIndex != nullptr) {
         bufIndex.release();
         bufIndex = nullptr;
+    }
+    if (texDepth != nullptr) {
+        texDepth.release();
+        texDepth = nullptr;
+    }
+    if (texViewDepth != nullptr) {
+        texViewDepth.release();
+        texViewDepth = nullptr;
     }
     if (pipeline != nullptr) {
         pipeline.release();
