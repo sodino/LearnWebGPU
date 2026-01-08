@@ -86,6 +86,10 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 	// Compose and apply rotations
 	// (S then T then R1 then R2, remember this reads backwards)
+
+    // 原始位置 : 由于配置深度测试是 ::Less，所以z值越小，越接近Camera才会被显示出来。
+    // 根据C++侧的顶点位置信息，底座z值为-0.3，顶点z值为+0.5。所以默认会显示出金字塔的纯白正方形底座。
+    // 所以：上面的R2矩阵，则是沿X轴倾斜3/8圈，即45度。才有俯视的视角让顶点显示出来
 	let homogeneous_position = vec4f(in.position, 1.0);
     // 效果的应用顺序是按下面算式的逆序: 先Scale,再Translate,再Rotate,最后投影。
 	// let position = (R2 * R1 * T * S * homogeneous_position).xyz;
