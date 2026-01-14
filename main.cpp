@@ -114,7 +114,13 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     //       2.向X轴正方向平移0.5；
     //       3.在XY平面/Z轴，自旋 + 整体在XY平面/Z轴，以第1步的0.5为半径绕圈圈。
     //       4.整体视角:俯视45度的俯视角:金字塔在YZ平面/X轴，倾斜3/8圈。
-    let position = (R2 * R1 * T * S * homogeneous_position).xyz;
+    var position = (R2 * R1 * T * S * homogeneous_position).xyz;
+
+    // 简单透视投影计算 : 实现近大远小。
+    let focalPoint = vec3f(0.0, 0.0, -2.0); // 相机焦点位置，Z轴负方向上，所以'近大远小'只涉及 XY 平面上的缩放。
+    let focalLength = position.z - focalPoint.z; // 焦距长度值
+    position.x /= focalLength;
+    position.y /= focalLength;
 
     
 	out.position = vec4<f32>(position.x, position.y * data.ratio, position.z * 0.5 + 0.5, 1.0);
