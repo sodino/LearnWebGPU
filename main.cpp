@@ -32,6 +32,10 @@ struct VertexOutput {
 };
 
 struct MyUniforms {
+    matModel   : mat4x4f,
+    matView    : mat4x4f,    
+    matProject : mat4x4f,
+    
     v_cos   : f32,
     v_sin   : f32,
     ratio   : f32,  // 屏幕宽高比
@@ -163,12 +167,16 @@ private:
 
 private:
     struct MyUniforms {
+        glm::mat4x4 matModel;
+        glm::mat4x4 matView;
+        glm::mat4x4 matProject;
+
         float v_cos;
         float v_sin;
         float ratio = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;    // 屏幕宽高比。宽高是固定的，ratio就只在初始值有配置，后续都赋值不变更了。
         float _[1];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
     };
-    static_assert(sizeof(MyUniforms) % 16 == 0); // 目前最大是 float/4bytes，就必须是4byte对齐
+    static_assert(sizeof(MyUniforms) % 16 == 0); // GPU一次性读取 16bytes，所以这里检查 16 bytes对齐。
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
