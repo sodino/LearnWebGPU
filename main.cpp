@@ -272,7 +272,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     // 为uniform 配置limits
     requiredLimits.limits.maxBindGroups = 1;
     requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
-    requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
+    requiredLimits.limits.maxUniformBufferBindingSize = sizeof(MyUniforms); // 目前只传递MyUniforms结构体，则maxUniformBufferBindingSize至少要覆盖MyUniforms的大小。
     return requiredLimits;
 }
 
