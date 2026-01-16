@@ -49,87 +49,9 @@ const pi = 3.14159265359;
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out : VertexOutput; // 输入和输出都使用自定义结构
 	
-
-	// Scale the object
-	let S = transpose(mat4x4f(
-		0.3,  0.0, 0.0, 0.0,
-		0.0,  0.3, 0.0, 0.0,
-		0.0,  0.0, 0.3, 0.0,
-		0.0,  0.0, 0.0, 1.0,
-	));
-
-	// Translate the object
-	let T = transpose(mat4x4f(
-		1.0,  0.0, 0.0, 0.5,
-		0.0,  1.0, 0.0, 0.0,
-		0.0,  0.0, 1.0, 0.0,
-		0.0,  0.0, 0.0, 1.0,
-	));
-
-
-	// Rotate the model in the XY plane
-	let c1 = data.v_cos;
-	let s1 = data.v_sin;
-	let R1 = transpose(mat4x4f(
-		 c1,  s1, 0.0, 0.0,
-		-s1,  c1, 0.0, 0.0,
-		0.0, 0.0, 1.0, 0.0,
-		0.0,  0.0, 0.0, 1.0,
-	));
-
-
-	// 金字塔在YZ平面/X轴，翻转3/8圈。
-    // 默认显示金字塔底座，金字截顶点在底座下面。如果翻转一半，则是俯视图。这里翻转3/8圈，则是从上往下看的斜视图。
-	let angle2 = 3.0 * pi / 4.0;
-	let c2 = cos(angle2);
-	let s2 = sin(angle2);
-	let R2 = transpose(mat4x4f(
-		1.0, 0.0, 0.0, 0.0,
-		0.0,  c2,  s2, 0.0,
-		0.0, -s2,  c2, 0.0,
-		0.0,  0.0, 0.0, 1.0,
-	));
-
-	// Compose and apply rotations
-	// (S then T then R1 then R2, remember this reads backwards)
-
-    // 原始位置 : 由于配置深度测试是 ::Less，所以z值越小，越接近Camera才会被显示出来。
-    // 根据C++侧的顶点位置信息，底座z值为-0.3，顶点z值为+0.5。所以默认会显示出金字塔的纯白正方形底座。
-    // 所以：上面的R2矩阵，则是沿X轴倾斜3/8圈，即45度。才有俯视的视角让顶点显示出来
-	let homogeneous_position = vec4f(in.position, 1.0);
-    // 效果的应用顺序是按下面算式的逆序: 先Scale,再Translate,再Rotate,最后投影。
-	// let position = (R2 * R1 * T * S * homogeneous_position).xyz;
-
-    // 金字塔 1.缩小到原来的0.3；
-    //       2.在XY平面/Z轴，自旋。（只看到金字塔的底座，看不到金字塔的顶点:仰视视角）
-    // let position = (R1 * S * homogeneous_position).xyz;
-
-    // 金字塔 1.缩小到原来的0.3；
-    //       2.XY平面/Z轴，自旋；
-    //       3.向X轴正方向平移0.5。
-    // let position = (T * R1 * S * homogeneous_position).xyz;
-
-
-    // 金字塔 1.缩小到原来的0.3；
-    //       2.向X轴正方向平移0.5；
-    //       3.在XY平面/Z轴，自旋 + 整体在XY平面/Z轴，以第1步的0.5为半径绕圈圈。
-    // let position = (R1 * T * S * homogeneous_position).xyz;
-
-
-    // 金字塔 1.缩小到原来的0.3；
-    //       2.向X轴正方向平移0.5；
-    //       3.在XY平面/Z轴，自旋 + 整体在XY平面/Z轴，以第1步的0.5为半径绕圈圈。
-    //       4.整体视角:俯视45度的俯视角:金字塔在YZ平面/X轴，倾斜3/8圈。
-    var position = (R2 * R1 * T * S * homogeneous_position).xyz;
-
-    // 简单透视投影计算 : 实现近大远小。
-    let focalPoint = vec3f(0.0, 0.0, -2.0); // 相机焦点位置，Z轴负方向上，所以'近大远小'只涉及 XY 平面上的缩放。
-    let focalLength = position.z - focalPoint.z; // 焦距长度值
-    position.x /= focalLength;
-    position.y /= focalLength;
-
-    
-	out.position = vec4<f32>(position.x, position.y * data.ratio, position.z * 0.5 + 0.5, 1.0);
+    // 矩阵乘法是右结合的，最右边的矩阵，最先作用在向量上。
+    // 使用 Model / View / Projection 矩阵，将顶点坐标从 局部空间 → 世界空间 → 摄像机空间 → 裁剪空间（用于后续透视除法） 的逐步转换。
+    out.position = data.matProject * data.matView * data.matModel * vec4f(in.position, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
