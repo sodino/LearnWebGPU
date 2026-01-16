@@ -8,6 +8,8 @@
 #include <GLFW/glfw3.h>
 #include <glfw3webgpu.h>
 
+#include <glm/glm.hpp> // all types inspired from GLSL
+#include <glm/ext.hpp>
 #include <iostream>
 #include <vector>
 #include <cassert>
