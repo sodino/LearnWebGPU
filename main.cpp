@@ -38,7 +38,6 @@ struct MyUniforms {
     
     v_cos   : f32,
     v_sin   : f32,
-    ratio   : f32,  // 屏幕宽高比
 };
 @group(0) @binding(0)
 var<uniform> data : MyUniforms;
@@ -95,8 +94,7 @@ private:
 
         float v_cos;
         float v_sin;
-        float ratio = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;    // 屏幕宽高比。宽高是固定的，ratio就只在初始值有配置，后续都赋值不变更了。
-        float _[1];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
+        float _[2];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
     };
     static_assert(sizeof(MyUniforms) % 16 == 0); // GPU一次性读取 16bytes，所以这里检查 16 bytes对齐。
     // time : 传0时表示初始状态
