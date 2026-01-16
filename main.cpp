@@ -18,6 +18,8 @@
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 600
 
+constexpr float PI = 3.14159265358979323846f;
+
 const char* shaderSource = R"(
 // 位置+颜色 的顶点属性结构，作为顶点着色器的输入参数
 struct VertexInput {
@@ -39,7 +41,6 @@ struct MyUniforms {
 @group(0) @binding(0)
 var<uniform> data : MyUniforms;
 
-const pi = 3.14159265359;
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
