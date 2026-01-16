@@ -99,6 +99,8 @@ private:
         float _[1];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
     };
     static_assert(sizeof(MyUniforms) % 16 == 0); // GPU一次性读取 16bytes，所以这里检查 16 bytes对齐。
+    // time : 传0时表示初始状态
+    void UpdateMyUniforms(MyUniforms& my, float time = 0.0f);
 private:
     GLFWwindow* window = nullptr;
     wgpu::Surface surface = nullptr;
@@ -261,11 +263,37 @@ void Application::InitializeBuffers() {
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufUniform = device.createBuffer(bufferDesc);
     MyUniforms my; // 先写入一个默认值吧...
-    my.v_cos = 0.0f;
-    my.v_sin = 0.0f;
+    UpdateMyUniforms(my);
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
 }
 
+void Application::UpdateMyUniforms(MyUniforms& my, float time) {
+    float angle = time;
+    {// Model
+        glm::mat4x4 m(1.0f); // 单位矩阵
+        my.matModel = m;
+    }
+
+    {// View
+        glm::mat4x4 m(1.0f);
+        my.matView = m;
+    }
+    {// Projection
+        glm::mat4x4 m(1.0f);
+        my.matProjection = m;
+    }
+
+
+    if (time == 0.0f) {
+        // 初始值
+        my.v_cos = 0.0f;
+        my.v_sin = 0.0f;
+    } else {
+        my.v_cos = cosf(angle);
+        my.v_sin = sinf(angle);
+    }
+    my.ratio = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;
+}
 
 void Application::InitializePipeline(wgpu::TextureFormat format) {
     wgpu::ShaderModuleDescriptor shaderDesc;
