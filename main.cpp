@@ -8,6 +8,9 @@
 #include <GLFW/glfw3.h>
 #include <glfw3webgpu.h>
 
+
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE // GLM 默认使用 -1 到 1 的深度范围，而 WebGPU 使用 0 到 1。宏GLM_FORCE_DEPTH_ZERO_TO_ONE：将深度范围设为 0 到 1（WebGPU 默认）
+#define GLM_FORCE_LEFT_HANDED // GLM 默认使用右手坐标系，而 WebGPU 使用左手坐标系。宏GLM_FORCE_LEFT_HANDED：将坐标系设为左手坐标系（WebGPU 默认）
 #include <glm/glm.hpp> // all types inspired from GLSL
 #include <glm/ext.hpp>
 #include <iostream>
