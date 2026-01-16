@@ -34,7 +34,7 @@ struct VertexOutput {
 struct MyUniforms {
     matModel   : mat4x4f,
     matView    : mat4x4f,    
-    matProject : mat4x4f,
+    matProjection : mat4x4f,
     
     v_cos   : f32,
     v_sin   : f32,
@@ -51,7 +51,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 	
     // 矩阵乘法是右结合的，最右边的矩阵，最先作用在向量上。
     // 使用 Model / View / Projection 矩阵，将顶点坐标从 局部空间 → 世界空间 → 摄像机空间 → 裁剪空间（用于后续透视除法） 的逐步转换。
-    out.position = data.matProject * data.matView * data.matModel * vec4f(in.position, 1.0);
+    out.position = data.matProjection * data.matView * data.matModel * vec4f(in.position, 1.0);
     out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
@@ -91,7 +91,7 @@ private:
     struct MyUniforms {
         glm::mat4x4 matModel;
         glm::mat4x4 matView;
-        glm::mat4x4 matProject;
+        glm::mat4x4 matProjection;
 
         float v_cos;
         float v_sin;
@@ -675,8 +675,7 @@ void Application::MainLoop() {
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
     MyUniforms my;
-    my.v_cos = cosf(t);
-    my.v_sin = sinf(t);
+    UpdateMyUniforms(my, t);
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
 
 	// Create a command encoder for the draw call
