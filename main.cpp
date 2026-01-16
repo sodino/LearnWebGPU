@@ -290,7 +290,7 @@ void Application::UpdateMyUniforms(MyUniforms& my, float time) {
         my.v_cos = cosf(angle);
         my.v_sin = sinf(angle);
     }
-    my.ratio = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;
+
 }
 
 void Application::InitializePipeline(wgpu::TextureFormat format) {
