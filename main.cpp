@@ -672,14 +672,6 @@ void Application::MainLoop() {
 	wgpu::TextureView targetView = GetNextSurfaceTextureView();
 	if (!targetView) return;
 
-    std::array<float, 4> tmp = {0.0f, 0.0f, 0.0f, 1.0f};
-    {
-        static int count = 0;
-        count ++;
-        int mod = (count / 100) % 3;
-        tmp[mod] = 1.0f;
-        std::cout <<"TestDemo count=" << count << " 0=" << tmp[0] << " 1=" << tmp[1] << " 2="<< tmp[2] << " 3=" << tmp[3] << std::endl;
-    }
     // 将时间写入到 uniform buffer 中
     float t = static_cast<float>(glfwGetTime());
     MyUniforms my;
