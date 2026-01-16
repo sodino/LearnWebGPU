@@ -35,9 +35,6 @@ struct MyUniforms {
     matModel   : mat4x4f,
     matView    : mat4x4f,    
     matProjection : mat4x4f,
-    
-    v_cos   : f32,
-    v_sin   : f32,
 };
 @group(0) @binding(0)
 var<uniform> data : MyUniforms;
@@ -91,10 +88,6 @@ private:
         glm::mat4x4 matModel;
         glm::mat4x4 matView;
         glm::mat4x4 matProjection;
-
-        float v_cos;
-        float v_sin;
-        float _[2];     // struct凑齐 16 bytes，为uniform buffer 内存对齐..（工程级安全写法，WGSL无所谓内存对齐， 只是硬件层面的行为）
     };
     static_assert(sizeof(MyUniforms) % 16 == 0); // GPU一次性读取 16bytes，所以这里检查 16 bytes对齐。
     // time : 传0时表示初始状态
@@ -282,14 +275,6 @@ void Application::UpdateMyUniforms(MyUniforms& my, float time) {
     }
 
 
-    if (time == 0.0f) {
-        // 初始值
-        my.v_cos = 0.0f;
-        my.v_sin = 0.0f;
-    } else {
-        my.v_cos = cosf(angle);
-        my.v_sin = sinf(angle);
-    }
 
 }
 
