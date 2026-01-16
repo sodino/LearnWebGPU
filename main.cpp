@@ -262,6 +262,7 @@ void Application::UpdateMyUniforms(MyUniforms& my, float time) {
     float angle = time;
     {// Model
         glm::mat4x4 m(1.0f); // 单位矩阵
+        m = glm::rotate(m, angle, glm::vec3(0.0f, 0.0f, 1.0f)); // 围绕Z轴旋转
         my.matModel = m;
     }
 
