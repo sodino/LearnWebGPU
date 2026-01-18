@@ -283,11 +283,19 @@ void Application::UpdateMyUniforms(MyUniforms& my, float time) {
 
     glm::vec3 focalPoint(0.0f, 0.0f, -2.0f); // 焦点/摄像机位置: 金字塔顶点正上方（Z轴的下方）
     {// View : 原则 : 摄像机不动，世界在动；所以实现运算时，都要逆着来。
-        float angleTriange = 3.0f * PI / 4.0f; // 135度，
+        float angleTriangle = 3.0f * PI / 4.0f; // 135度，
         glm::mat4x4 v(1.0f);
         v = glm::translate(v, -focalPoint); // 世界反向平移
-        v = glm::rotate(v, -angleTriange, glm::vec3(1.0f, 0.0f, 0.0f));
+        v = glm::rotate(v, -angleTriangle, glm::vec3(1.0f, 0.0f, 0.0f));
         my.matView = v;
+
+
+        glm::vec3 eye = focalPoint;
+        glm::mat4 rot = glm::rotate(glm::mat4(1.0f), -angleTriangle, glm::vec3(1,0,0));
+        eye = glm::vec3(rot * glm::vec4(eye,1.0f));    // 摄像机位置
+        glm::vec3 center(0.0f, 0.0f, 0.0f);               // 摄像机看向目标
+        glm::vec3 up(0.0f, 1.0f, 0.0f);                  // 世界上方向
+        my.matView = glm::lookAt(eye, center, up);
     }
     {// Projection 
         glm::mat4x4 p(1.0f);
