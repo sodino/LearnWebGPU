@@ -264,23 +264,41 @@ void Application::InitializeBuffers() {
 
 void Application::UpdateMyUniforms(MyUniforms& my, float time) {
     float angle = time;
+    // 矩阵运算的顺序 与 最终实现的效果顺序是 相反的。
     {// Model
         glm::mat4x4 m(1.0f); // 单位矩阵
-        m = glm::rotate(m, angle, glm::vec3(0.0f, 0.0f, 1.0f)); // 围绕Z轴旋转
+        {   // 最终效果 : 金字塔以屏幕正中心为圆点，一边自旋一边以0.5半径绕圈圈
+            // : scale(先缩小为初始的0.3) → translate(平衡到X轴+0.5) → rotate(绕Z轴旋转)
+            m = glm::rotate(m, angle, glm::vec3(0.0f, 0.0f, 1.0f)); // 围绕Z轴旋转
+            m = glm::translate(m, glm::vec3(0.5f, 0.0f, 0.0f));     // 平移到X轴正方向
+            m = glm::scale(m, glm::vec3(0.3f, 0.3f, 0.3f));         // xyz 同时/整体 缩小为初始的0.3倍
+        }
+        // {   // 最终效果 : 金字塔的中心固定在在 X +0.5 处，自旋
+        //     m = glm::translate(m, glm::vec3(0.5f, 0.0f, 0.0f));     // 平移到X轴正方向
+        //     m = glm::scale(m, glm::vec3(0.3f, 0.3f, 0.3f));         // xyz 同时/整体 缩小为初始的0.3倍
+        //     m = glm::rotate(m, angle, glm::vec3(0.0f, 0.0f, 1.0f)); // 围绕Z轴旋转
+        // }
         my.matModel = m;
     }
 
-    {// View
-        glm::mat4x4 m(1.0f);
-        my.matView = m;
+    glm::vec3 focalPoint(0.0f, 0.0f, -2.0f); // 焦点/摄像机位置: 金字塔顶点正上方（Z轴的下方）
+    {// View : 原则 : 摄像机不动，世界在动；所以实现运算时，都要逆着来。
+        float angleTriange = 3.0f * PI / 4.0f; // 135度，
+        glm::mat4x4 v(1.0f);
+        v = glm::translate(v, -focalPoint); // 世界反向平移
+        v = glm::rotate(v, -angleTriange, glm::vec3(1.0f, 0.0f, 0.0f));
+        my.matView = v;
     }
-    {// Projection
-        glm::mat4x4 m(1.0f);
-        my.matProjection = m;
+    {// Projection 
+        glm::mat4x4 p(1.0f);
+        float aspect = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;
+        float focalLength = -1.0f * focalPoint.z;
+        float near = 0.5f;
+        float far = 10.0f;
+        float fov = 2 * glm::atan(1.0f / focalLength);
+        p = glm::perspective(fov, aspect, near, far);
+        my.matProjection = p;
     }
-
-
-
 }
 
 void Application::InitializePipeline(wgpu::TextureFormat format) {
