@@ -204,13 +204,23 @@ void Application::InitializeImageTexture() {
     std::vector<uint8_t> imageData(texWidth * texHeight * 4); // 4 bytes per pixel (RGBA)
 
     // 填充图片数据，这里简单地创建一个渐变图像
-    for (uint32_t y = 0; y < texHeight; ++y) {
-        for (uint32_t x = 0; x < texWidth; ++x) {
-            size_t index = (y * texWidth + x) * 4;
-            imageData[index + 0] = static_cast<uint8_t>((x / static_cast<float>(texWidth)) * 255); // R
-            imageData[index + 1] = static_cast<uint8_t>((y / static_cast<float>(texHeight)) * 255); // G
-            imageData[index + 2] = 128; // B
-            imageData[index + 3] = 255; // A
+    // for (uint32_t y = 0; y < texHeight; ++y) {
+    //     for (uint32_t x = 0; x < texWidth; ++x) {
+    //         size_t index = (y * texWidth + x) * 4;
+    //         imageData[index + 0] = static_cast<uint8_t>((x / static_cast<float>(texWidth)) * 255); // R
+    //         imageData[index + 1] = static_cast<uint8_t>((y / static_cast<float>(texHeight)) * 255); // G
+    //         imageData[index + 2] = 128; // B
+    //         imageData[index + 3] = 255; // A
+    //     }
+    // }
+    // 填充图片数据，这里简单地创建 马赛克 效果
+    for (uint32_t i = 0; i < texWidth; ++i) {
+        for (uint32_t j = 0; j < texHeight; ++j) {
+            uint8_t* p = &imageData[4 * (j * texWidth + i)];
+            p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+            p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+            p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+            p[3] = 255; // a
         }
     }
 
@@ -371,10 +381,12 @@ void Application::UpdateMyUniforms(MyUniforms& my, float ) {
     {// View : 原则 : 摄像机不动，世界在动；所以实现运算时，数据要取反。
         glm::mat4x4 v(1.0f);
         my.matView = v;
+        // my.matView = glm::lookAt(glm::vec3(-0.5f, -2.5f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1)); // the last argument indicates our Up direction convention
     }
     {// Projection 
         glm::mat4x4 p(1.0f);
         my.matProjection = p;
+        // my.matProjection = glm::perspective(45 * PI / 180, 640.0f / 480.0f, 0.01f, 100.0f);
     }
 }
 
