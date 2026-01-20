@@ -286,6 +286,7 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
     // 为uniform 配置limits
     requiredLimits.limits.maxBindGroups = 1;
     requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
+    requiredLimits.limits.maxSampledTexturesPerShaderStage = 1; // 目前片段着色器阶段 只用到 1 个采样纹理 gradientTexture
     requiredLimits.limits.maxUniformBufferBindingSize = sizeof(MyUniforms); // 目前只传递MyUniforms结构体，则maxUniformBufferBindingSize至少要覆盖MyUniforms的大小。
     return requiredLimits;
 }
