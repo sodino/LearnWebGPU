@@ -17,6 +17,7 @@
 #include <vector>
 #include <cassert>
 
+constexpr float PI = 3.14159265358979323846f;
 
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 600
@@ -30,6 +31,7 @@ struct VertexInput {
 // 顶点着色器的输出 & 片段着色器的输入
 struct VertexOutput {
     @builtin(position) position : vec4f,
+    @location(1) texCoords : vec2f,
 };
 
 struct MyUniforms {
@@ -51,6 +53,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     // 矩阵乘法是右结合的，最右边的矩阵，最先作用在向量上。
     // 使用 Model / View / Projection 矩阵，将顶点坐标从 局部空间 → 世界空间 → 摄像机空间 → 裁剪空间（用于后续透视除法） 的逐步转换。
     out.position = data.matProjection * data.matView * data.matModel * vec4f(in.position, 1.0);
+
+    out.texCoords = (in.position.xy + 1.0) / 2.0 * 256.0; // 将位置坐标映射到纹理坐标范围 [0, 256)
     return out;
 }
 
@@ -64,13 +68,7 @@ fn fs_main(in : VertexOutput) -> @location(0) vec4f {
 
 
 
-    // 获取屏幕空间坐标，如：
-	//   - 屏幕左上角：in.position.xy = (0.0, 0.0)
-	//   - 屏幕中心：in.position.xy = (320.0, 240.0)  [屏幕大小 640x480]
-	//   - 屏幕右下角：in.position.xy = (639.0, 479.0)
-	let screenPosition = in.position.xy;
-    // 从float转化到int32, 截断小数部分 : 如 : screenPosition = (50.9, 75.1) -> texCoord = (50, 75)  
-    let texCoord = vec2<i32>(screenPosition);
+    let texCoord = vec2i(in.texCoords); // 纹理坐标取整，转换为整数坐标
     // 从纹理中读取图片指定坐标的颜色值
     // imgColor 默认值为 红色（非法坐标的范围）
     var imgColor = vec4f(0.0, 0.0, 0.0, 0.0);   // 0.0 : 透出原本的洋青色背景
@@ -379,14 +377,13 @@ void Application::UpdateMyUniforms(MyUniforms& my, float ) {
     }
 
     {// View : 原则 : 摄像机不动，世界在动；所以实现运算时，数据要取反。
-        glm::mat4x4 v(1.0f);
-        my.matView = v;
-        // my.matView = glm::lookAt(glm::vec3(-0.5f, -2.5f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1)); // the last argument indicates our Up direction convention
+        glm::vec3 eye = glm::vec3(-0.5f, -2.5f, 2.0f); // 摄像机位置
+        glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f); // 摄像机目标点
+        glm::vec3 up = glm::vec3(0, 0, 1); // 摄像的上方向
+        my.matView = glm::lookAt(eye, center, up);
     }
     {// Projection 
-        glm::mat4x4 p(1.0f);
-        my.matProjection = p;
-        // my.matProjection = glm::perspective(45 * PI / 180, 640.0f / 480.0f, 0.01f, 100.0f);
+        my.matProjection = glm::perspective(45 * PI / 180, 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT, 0.01f, 100.0f);
     }
 }
 
