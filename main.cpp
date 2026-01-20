@@ -824,8 +824,7 @@ void Application::MainLoop() {
 	colorAttachment.resolveTarget = nullptr;
 	colorAttachment.loadOp = WGPULoadOp_Clear;
 	colorAttachment.storeOp = WGPUStoreOp_Store;
-	// colorAttachment.clearValue = WGPUColor{ 1.0, 0.0, 1.0, 1.0 };
-	colorAttachment.clearValue = wgpu::Color{ 1.0, 0.0, 1.0, 1.0 };
+	colorAttachment.clearValue = wgpu::Color{ 1.0, 0.0, 0.0, 1.0 };
 #ifndef WEBGPU_BACKEND_WGPU
 	renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 #endif // NOT WEBGPU_BACKEND_WGPU
