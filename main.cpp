@@ -111,6 +111,8 @@ private:
     void InitializeBindGroups();
     void InitializeDepthTexture();
 
+    void InitializeImageTexture();
+
 private:
     struct MyUniforms {
         glm::mat4x4 matModel;
@@ -167,6 +169,70 @@ int main() {
 
 Application::Application() { }
 Application::~Application() { }
+
+
+
+void Application::InitializeImageTexture() {
+    // 在CPU侧自己创建一个 256x256 的 RGBA 图片数据
+    const uint32_t texWidth = 256;
+    const uint32_t texHeight = 256;
+
+    // 创建 图片Texture 
+    wgpu::TextureDescriptor descTexture;
+    descTexture.dimension = wgpu::TextureDimension::_2D;
+    descTexture.size = {texWidth, texHeight, 1};
+    descTexture.mipLevelCount = 1;
+    descTexture.sampleCount = 1;
+    descTexture.format = wgpu::TextureFormat::RGBA8Unorm;
+    descTexture.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+    descTexture.viewFormatCount = 0;
+    descTexture.viewFormats = nullptr;
+    texImage = device.createTexture(descTexture);
+
+    wgpu::TextureViewDescriptor descTextureView;
+    // 纹理是“用来显示图片 / 作为颜色纹理”——👉 aspect = wgpu::TextureAspect::All（也是唯一正确、通用的选择）
+    descTextureView.aspect = wgpu::TextureAspect::All;  // 使用全部的纹理数据（这些数据都用来表示RGBA了）
+    descTextureView.baseArrayLayer = 0;
+    descTextureView.arrayLayerCount = 1;
+    descTextureView.baseMipLevel = 0;
+    descTextureView.mipLevelCount = 1;
+    descTextureView.dimension = wgpu::TextureViewDimension::_2D;
+    descTextureView.format = descTexture.format;
+    texViewImage = texImage.createView(descTextureView);
+
+    // CPU rgba数据
+    std::vector<uint8_t> imageData(texWidth * texHeight * 4); // 4 bytes per pixel (RGBA)
+
+    // 填充图片数据，这里简单地创建一个渐变图像
+    for (uint32_t y = 0; y < texHeight; ++y) {
+        for (uint32_t x = 0; x < texWidth; ++x) {
+            size_t index = (y * texWidth + x) * 4;
+            imageData[index + 0] = static_cast<uint8_t>((x / static_cast<float>(texWidth)) * 255); // R
+            imageData[index + 1] = static_cast<uint8_t>((y / static_cast<float>(texHeight)) * 255); // G
+            imageData[index + 2] = 128; // B
+            imageData[index + 3] = 255; // A
+        }
+    }
+
+    // GPU 纹理中，要被写入的那一块区域在哪里 : imageCopyTexture.texture = texImage;
+    wgpu::ImageCopyTexture imageCopyTexture;
+    imageCopyTexture.texture = texImage;
+    imageCopyTexture.mipLevel = 0;
+    imageCopyTexture.origin = {0, 0, 0};
+
+    wgpu::TextureDataLayout dataLayout; // 描述 : CPU 内存是怎么排布的
+    dataLayout.offset = 0;
+    dataLayout.bytesPerRow = texWidth * 4; // 4 bytes per pixel
+    dataLayout.rowsPerImage = texHeight;
+
+    queue.writeTexture(
+        imageCopyTexture, // 要写入哪一块 GPU 纹理
+        imageData.data(), imageData.size(), // CPU 侧待写入数据
+        dataLayout,                         // 'CPU 侧待写入数据'的排布描述
+        descTexture.size                    // 要写入的区域大小
+    );
+
+}
 
 void Application::InitializeDepthTexture() {
     // Texture : 本质上是显存，创建时约定了“内存 + 存储规则”。在当前示例中，这块GPU 内存在这里解读为“这块 2D 表格” : data[x][y] = depthValue 的形式存储深度信息。
@@ -435,7 +501,7 @@ wgpu::TextureView Application::GetNextSurfaceTextureView() {
     tvDesc.mipLevelCount = 1;
     tvDesc.baseArrayLayer = 0;
     tvDesc.arrayLayerCount = 1;
-    tvDesc.aspect = WGPUTextureAspect_All;
+    tvDesc.aspect = wgpu::TextureAspect::All;
     // WGPUTextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &tvDesc);
     wgpu::TextureView targetView = texture.createView(tvDesc);
     // wgpuTextureRelease(surfaceTexture.texture); // 释放纹理对象引用, 但wgpu-native不能手动释放，所以注释掉
@@ -556,7 +622,8 @@ bool Application::Initialize() {
     InitializeBuffers();
     InitializeBindGroups();
     InitializeDepthTexture();
-    
+    InitializeImageTexture();
+
     // PlayingWithBuffers();
     return true;
 }
