@@ -206,29 +206,20 @@ void Application::InitializeBindGroups() {
 }
 
 void Application::InitializeBuffers() {
-    // 定义由4个顶点拼成的金字塔的 顶点数据 + rgb颜色
+    // 定义由4个顶点拼成正方形
     std::vector<float> pointData = {
-            // x0, y0, z0,         r0,  g0,  b0
-            //                                    // 金字塔底座4个点，z统一为 -0.3
-            -0.5, -0.5, -0.3,      1.0, 1.0, 1.0, // 左下 0
-            +0.5, -0.5, -0.3,      1.0, 1.0, 1.0, // 右下 1
-            +0.5, +0.5, -0.3,      1.0, 1.0, 1.0, // 右上 2
-            -0.5, +0.5, -0.3,      1.0, 1.0, 1.0, // 左上 3
-
-            +0.0, +0.0, +0.5,      0.0, 0.0, 1.0  // 金字塔顶点，z为 +0.5
+            // x0,  y0
+            -1.0, -1.0,
+            +1.0, -1.0,
+            +1.0, +1.0,
+            -1.0, +1.0
     };
 
     // 定义索引，规则 点数据 如何组成金字塔
     std::vector<uint16_t> indexData = {
-            // 确定金字塔底座的面
+            // 确定正方形的面 : 要符合frontFace = wgpu::FrontFace::CCW 逆时针的顶点顺序，才是正面。
             0, 1, 2,  // 右下的三角形
-            0, 2, 3,  // 左上的三角形
-
-            // 确定金字塔4个面
-            0, 1, 4,
-            1, 2, 4,
-            2, 3, 4,
-            3, 0, 4
+            0, 2, 3   // 左上的三角形
     };
 
     indexCount = static_cast<uint32_t>(indexData.size()); // 索引才有真实 : 点数据个数
@@ -300,19 +291,13 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
 
     wgpu::VertexAttribute positionAttrib;
     positionAttrib.shaderLocation = 0; // @location(0)
-    positionAttrib.format = wgpu::VertexFormat::Float32x3;
+    positionAttrib.format = wgpu::VertexFormat::Float32x2;
     positionAttrib.offset = 0;
     vertexAttribs.push_back(positionAttrib);
 
-    wgpu::VertexAttribute rgbAttrib;
-    rgbAttrib.shaderLocation = 1;     // @location(1)
-    rgbAttrib.format = wgpu::VertexFormat::Float32x3;
-    rgbAttrib.offset = 3 * sizeof(float); // 前面每一组position的长度是(xyz) 3个float
-    vertexAttribs.push_back(rgbAttrib);
-
     vertexBufferLayout.attributeCount = vertexAttribs.size();    // 1个position Attrib + 1个rgb Attrib
     vertexBufferLayout.attributes = vertexAttribs.data();
-    vertexBufferLayout.arrayStride = 6 * sizeof(float);          // 顶点数据 步长为 (xyz) + rgb 共 6 float
+    vertexBufferLayout.arrayStride = 2 * sizeof(float);          // 顶点数据 步长为 (xyz) + rgb 共 6 float
     vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
 
     pipelineDesc.vertex.bufferCount = 1;
@@ -326,7 +311,7 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
     pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
 
-    pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
+    pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;    // 顶点+Indexed 绘制时，顶点顺序要按逆时针方向，才是正面才能被画出来。
     pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
 
 
