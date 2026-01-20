@@ -21,19 +21,15 @@
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 600
 
-constexpr float PI = 3.14159265358979323846f;
-
 const char* shaderSource = R"(
 // 位置+颜色 的顶点属性结构，作为顶点着色器的输入参数
 struct VertexInput {
     @location(0) position : vec3f,
-    @location(1) color : vec3f,
 };
 
 // 顶点着色器的输出 & 片段着色器的输入
 struct VertexOutput {
     @builtin(position) position : vec4f,
-    @location(0) color : vec3f,
 };
 
 struct MyUniforms {
@@ -52,7 +48,6 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     // 矩阵乘法是右结合的，最右边的矩阵，最先作用在向量上。
     // 使用 Model / View / Projection 矩阵，将顶点坐标从 局部空间 → 世界空间 → 摄像机空间 → 裁剪空间（用于后续透视除法） 的逐步转换。
     out.position = data.matProjection * data.matView * data.matModel * vec4f(in.position, 1.0);
-    out.color = in.color; // 向片段着色器转发 颜色值
     return out;
 }
 
@@ -262,52 +257,21 @@ void Application::InitializeBuffers() {
     queue.writeBuffer(bufUniform, 0, &my, sizeof(MyUniforms));
 }
 
-void Application::UpdateMyUniforms(MyUniforms& my, float time) {
-    float angle = time;
+
+
+void Application::UpdateMyUniforms(MyUniforms& my, float ) {
     // 矩阵运算的顺序 与 最终实现的效果顺序是 相反的。
     {// Model
-        glm::mat4x4 m(1.0f); // 单位矩阵
-        {   // 最终效果 : 金字塔以屏幕正中心为圆点，一边自旋一边以0.5半径绕圈圈
-            // : scale(先缩小为初始的0.3) → translate(平衡到X轴+0.5) → rotate(绕Z轴旋转)
-            m = glm::rotate(m, angle, glm::vec3(0.0f, 0.0f, 1.0f)); // 围绕Z轴旋转
-            m = glm::translate(m, glm::vec3(0.5f, 0.0f, 0.0f));     // 平移到X轴正方向
-            m = glm::scale(m, glm::vec3(0.3f, 0.3f, 0.3f));         // xyz 同时/整体 缩小为初始的0.3倍
-        }
-        // {   // 最终效果 : 金字塔的中心固定在在 X +0.5 处，自旋
-        //     m = glm::translate(m, glm::vec3(0.5f, 0.0f, 0.0f));     // 平移到X轴正方向
-        //     m = glm::scale(m, glm::vec3(0.3f, 0.3f, 0.3f));         // xyz 同时/整体 缩小为初始的0.3倍
-        //     m = glm::rotate(m, angle, glm::vec3(0.0f, 0.0f, 1.0f)); // 围绕Z轴旋转
-        // }
+        glm::mat4x4 m(1.0f);
         my.matModel = m;
     }
 
-    glm::vec3 focalPoint(0.0f, 0.0f, -2.0f); // 焦点/摄像机位置: 金字塔顶点正上方（Z轴的下方）
     {// View : 原则 : 摄像机不动，世界在动；所以实现运算时，数据要取反。
-        float angleTriangle = 3.0f * PI / 4.0f; // 135度，
-        if (false) {
-            // 方法一:手动实现 View 矩阵的构建
-            glm::mat4x4 v(1.0f);
-            v = glm::translate(v, -focalPoint); // 世界反向平移
-            v = glm::rotate(v, -angleTriangle, glm::vec3(1.0f, 0.0f, 0.0f));
-            my.matView = v;
-        } else {
-            // 方法二:等价实现 : 使用 glm::lookAt 来构建 View 矩阵
-            glm::vec3 eye = focalPoint;
-            glm::mat4 rot = glm::rotate(glm::mat4(1.0f), -angleTriangle, glm::vec3(1,0,0));
-            eye = glm::vec3(rot * glm::vec4(eye,1.0f));    // 摄像机位置
-            glm::vec3 center(0.0f, 0.0f, 0.0f);               // 摄像机看向目标
-            glm::vec3 up(0.0f, 1.0f, 0.0f);                  // 世界上方向
-            my.matView = glm::lookAt(eye, center, up);
-        }
+        glm::mat4x4 v(1.0f);
+        my.matView = v;
     }
     {// Projection 
         glm::mat4x4 p(1.0f);
-        float aspect = 1.0f * WINDOW_WIDTH / WINDOW_HEIGHT;
-        float focalLength = -1.0f * focalPoint.z;
-        float near = 0.5f;
-        float far = 10.0f;
-        float fov = 2 * glm::atan(1.0f / focalLength);
-        p = glm::perspective(fov, aspect, near, far);
         my.matProjection = p;
     }
 }
