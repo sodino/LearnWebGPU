@@ -292,16 +292,26 @@ wgpu::RequiredLimits Application::GetRequiredLimits(wgpu::Adapter adapter) const
 
 
 void Application::InitializeBindGroups() {
-    wgpu::BindGroupEntry entry{};
-    entry.binding = 0; // 对应 @binding(0)，这里不再是解释，而是直接赋值 bufUniform 的作用。
-    entry.buffer = bufUniform;
-    entry.offset = 0;
-    entry.size = sizeof(MyUniforms);
+    std::vector<wgpu::BindGroupEntry> entries(2, wgpu::Default);
+    {
+        // 对应 @binding(0)，这里不再是解释，而是直接赋值 bufUniform 的作用。
+        wgpu::BindGroupEntry& entry = entries[0];
+        entry.binding = 0; 
+        entry.buffer = bufUniform;
+        entry.offset = 0;
+        entry.size = sizeof(MyUniforms);
+    }
+    {
+        // 对应 @binding(1)，赋值为 texViewImage 纹理视图
+        wgpu::BindGroupEntry& entry = entries[1];
+        entry.binding = 1; 
+        entry.textureView = texViewImage;
+    }
 
     wgpu::BindGroupDescriptor descBindGroup{};
     descBindGroup.layout = layoutBindGroup;
-    descBindGroup.entryCount = 1;
-    descBindGroup.entries = &entry;
+    descBindGroup.entryCount = 2;
+    descBindGroup.entries = entries.data();
     bindGroup = device.createBindGroup(descBindGroup);
 }
 
