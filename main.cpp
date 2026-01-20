@@ -456,16 +456,28 @@ void Application::InitializePipeline(wgpu::TextureFormat format) {
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
 
     // 创建 BindGroupLayoutEntry 
-    wgpu::BindGroupLayoutEntry groupEntry = wgpu::Default;
-    groupEntry.binding = 0; // 对应wgsl中的 @binding(0)，这里最终是解释 layout 的作用
-    groupEntry.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment; // 在顶点着色器阶段能访问这个资源
-    groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
-    groupEntry.buffer.minBindingSize = sizeof(MyUniforms); // 真实的MyUniforms这个struct的size，已经符合：buffer 最小对齐要求：16 byte的倍数
+    std::vector<wgpu::BindGroupLayoutEntry> groupEntries(2, wgpu::Default);
+    {
+        // 对应wgsl中的 @binding(0)，这里最终是解释 layout 的作用
+        wgpu::BindGroupLayoutEntry& groupEntry = groupEntries[0];
+        groupEntry.binding = 0;
+        groupEntry.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment; // 在顶点着色器阶段能访问这个资源
+        groupEntry.buffer.type = wgpu::BufferBindingType::Uniform; // 当前@binding(0)是 Uniform 类型
+        groupEntry.buffer.minBindingSize = sizeof(MyUniforms); // 真实的MyUniforms这个struct的size，已经符合：buffer 最小对齐要求：16 byte的倍数
+    }
+    {
+        // 对应wgsl中的 @binding(1), 即gradientTexture
+        wgpu::BindGroupLayoutEntry& groupEntry = groupEntries[1];
+        groupEntry.binding = 1; 
+        groupEntry.visibility = wgpu::ShaderStage::Fragment; // 在片段着色器阶段能访问这个资源
+        groupEntry.texture.sampleType = wgpu::TextureSampleType::Float; // 纹理采样类型为 float 类型
+        groupEntry.texture.viewDimension = wgpu::TextureViewDimension::_2D; // 2D 纹理
+    }
 
     // 创建 BindGroupLayout ，并带上上述的BindGroupLayoutEntry
     wgpu::BindGroupLayoutDescriptor descGroupLayout{};
-    descGroupLayout.entryCount = 1; // 目前只有一个 uniform 变量
-    descGroupLayout.entries = &groupEntry;
+    descGroupLayout.entryCount = 2; // 目前 1.有一个 uniform 变量 2.gradientTexture 纹理
+    descGroupLayout.entries = groupEntries.data();
     layoutBindGroup = device.createBindGroupLayout(descGroupLayout);
 
     // 创建 PipelineLayout
@@ -620,9 +632,9 @@ bool Application::Initialize() {
 
     InitializePipeline(textureFormat);
     InitializeBuffers();
-    InitializeBindGroups();
     InitializeDepthTexture();
     InitializeImageTexture();
+    InitializeBindGroups();
 
     // PlayingWithBuffers();
     return true;
