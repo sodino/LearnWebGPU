@@ -40,6 +40,9 @@ struct MyUniforms {
 @group(0) @binding(0)
 var<uniform> data : MyUniforms;
 
+@group(0) @binding(1)
+var gradientTexture : texture_2d<f32>;
+
 
 @vertex 
 fn vs_main(in: VertexInput) -> VertexOutput {
@@ -53,7 +56,33 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in : VertexOutput) -> @location(0) vec4f {
-    return vec4f(in.color, 1.0);
+    // 动态获取纹理宽高
+    let _size : vec2<u32> = textureDimensions(gradientTexture);
+    // 注意 textureDimensions的返回 是 u32，后续我们要和 i32进行对比，所以这里提前转化一下
+    let textureSize : vec2<i32> = vec2<i32>(_size);
+    // let textureSize : vec2<i32> = vec2<i32>(textureDimensions(gradientTexture)); // 并成一句话
+
+
+
+    // 获取屏幕空间坐标，如：
+	//   - 屏幕左上角：in.position.xy = (0.0, 0.0)
+	//   - 屏幕中心：in.position.xy = (320.0, 240.0)  [屏幕大小 640x480]
+	//   - 屏幕右下角：in.position.xy = (639.0, 479.0)
+	let screenPosition = in.position.xy;
+    // 从float转化到int32, 截断小数部分 : 如 : screenPosition = (50.9, 75.1) -> texCoord = (50, 75)  
+    let texCoord = vec2<i32>(screenPosition);
+    // 从纹理中读取图片指定坐标的颜色值
+    // imgColor 默认值为 红色（非法坐标的范围）
+    var imgColor = vec4f(0.0, 0.0, 0.0, 0.0);   // 0.0 : 透出原本的洋青色背景
+    // texCoord的xy小于纹理宽高
+    if (texCoord.x >= 0 && texCoord.x < textureSize.x 
+        && texCoord.y >= 0 && texCoord.y < textureSize.y
+    ) {
+        imgColor = textureLoad(gradientTexture, texCoord, 0);   // 0 : 指定读取的 mip 级别，表示原图分辨率/最高分辨率。
+    }
+
+    // 最终输出颜色
+    return imgColor;
 }
 )";
 
