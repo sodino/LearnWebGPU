@@ -142,6 +142,11 @@ private:
     // 深度缓冲相关
     wgpu::Texture texDepth;
     wgpu::TextureView texViewDepth;
+
+
+    // 图片纹理
+    wgpu::Texture texImage;
+    wgpu::TextureView texViewImage;
 };
 
 int main() {
@@ -648,6 +653,14 @@ void Application::Terminate() {
     if (bufIndex != nullptr) {
         bufIndex.release();
         bufIndex = nullptr;
+    }
+    if (texImage != nullptr) {
+        texImage.release();
+        texImage = nullptr;
+    }
+    if (texViewImage != nullptr) {
+        texViewImage.release();
+        texViewImage = nullptr;
     }
     if (texDepth != nullptr) {
         texDepth.release();
